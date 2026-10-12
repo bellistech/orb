@@ -124,7 +124,8 @@ func main() {
 	feedView := func() feeds.View { return feeds.View{} }
 	if *demo {
 		src = func() *sys.Snapshot { return sys.Demo(time.Now()) }
-		feedView = func() feeds.View { return feeds.Demo(time.Now().Truncate(time.Minute)) }
+		dv := feeds.Demo(time.Now()) // built once: the reader caches by identity
+		feedView = func() feeds.View { return dv }
 	} else if *newsURL != "" || *weatherURL != "" {
 		store := &feeds.Store{}
 		store.Start(context.Background(), feeds.NewClient("nocterm/"+version, 30*time.Second), *newsURL, *weatherURL)

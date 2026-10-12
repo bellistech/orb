@@ -15,6 +15,15 @@ import (
 
 type sampleMsg *sys.Snapshot
 
+// frameMsg redraws without sampling, for the news page's typing.
+type frameMsg struct{}
+
+const frameEvery = 100 * time.Millisecond
+
+func frameTick() tea.Cmd {
+	return tea.Tick(frameEvery, func(time.Time) tea.Msg { return frameMsg{} })
+}
+
 // Model is the Bubble Tea model. It only displays; the keys are d and w
 // (pages), t (next theme) and q (quit).
 type Model struct {
@@ -54,7 +63,12 @@ func (m Model) sample(d time.Duration) tea.Cmd {
 }
 
 // Init takes the first sample shortly after start so rates have a baseline.
-func (m Model) Init() tea.Cmd { return m.sample(250 * time.Millisecond) }
+func (m Model) Init() tea.Cmd {
+	if m.page == ui.News {
+		return tea.Batch(m.sample(250*time.Millisecond), frameTick())
+	}
+	return m.sample(250 * time.Millisecond)
+}
 
 // Update handles samples, resizes and the two keys.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -64,6 +78,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Exactly one sample is ever in flight: the next is scheduled
 		// only after this one lands.
 		return m, m.sample(m.interval)
+	case frameMsg:
+		// The tick chain stops by itself once the page changes.
+		if m.page == ui.News {
+			return m, frameTick()
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
 	case tea.KeyPressMsg:
@@ -75,7 +95,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			m.page = ui.Dash
 		case "w":
-			m.page = ui.News
+			if m.page != ui.News {
+				m.page = ui.News
+				return m, frameTick()
+			}
 		}
 	}
 	return m, nil

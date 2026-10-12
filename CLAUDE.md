@@ -49,9 +49,10 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - Readers are best-effort: a missing file is an empty value, never an error or panic
 - Feed content is hostile: every string through `feeds.Clean`, every number range-checked, nothing from a feed reaches the terminal unsanitized
 - The news URL is private: it lives only in the user's config file, never in the repo, docs, tests or on screen
+- Never fetch article pages or anything beyond the two configured JSON feeds; summaries come from the feed's `description` only
 - Exactly one sample in flight; the next tick is scheduled when a sample lands
 - New panels: a `drawFn` in `internal/ui/` (dashboard panels wrap with `dash()`), a slot in `grid()`/`newsGrid()` per breakpoint, demo data in `sys.Demo` / `feeds.Demo`
 - `TestRenderAnySize` must stay green: every panel draws into any box and clips
 - Check visuals with `-once` at 215x45 (desk), 120x40, 80x60, and `-gfx -once 3440x1440 > f.png`, before calling a UI change done
 - Every rune a panel draws needs a glyph or shape in `gfx` (`TestEveryDashboardRuneSupported`)
-- Keep graphics frames cheap: `go test -bench "AnimatedFrameBlit|TweenFrame" ./internal/gfx` (idle ~0.1 ms, tween ~0.4 ms). The base layer (backdrop + windows) is cached; tiles redraw only when their cell changes; blits copy changed spans only
+- Keep graphics frames cheap: `go test -bench "AnimatedFrameBlit|TweenFrame|NewsFrame" ./internal/gfx` (idle ~0.1 ms, tween ~0.4 ms, news ~0.15 ms). The base layer (backdrop + windows) is cached; tiles redraw only when their cell changes; blits copy changed spans only

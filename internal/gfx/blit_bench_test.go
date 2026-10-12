@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"nocterm/internal/feeds"
 	"nocterm/internal/sys"
 	"nocterm/internal/ui"
 )
@@ -52,6 +53,22 @@ func BenchmarkTweenFrame(b *testing.B) {
 	for i := range b.N {
 		snap := sys.Lerp(a, z, float64(i%10)/10)
 		c := ui.Render(107, 45, ui.View{Snap: snap}, th, true)
+		fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: float64(i) / 15}), 4, 8, 0)
+	}
+}
+
+// The news page lays out every frame while the reader types.
+func BenchmarkNewsFrame(b *testing.B) {
+	pf, _ := newPixelFormat(xrgb())
+	fb := &FB{format: pf, W: 3440, H: 1440, stride: 13824}
+	fb.mem = make([]byte, fb.stride*fb.H)
+	start := time.Unix(1_800_000_000, 0)
+	snap, fv := sys.Demo(start), feeds.Demo(start)
+	th := ui.Themes[0]
+	r := NewRenderer()
+	for i := range b.N {
+		now := start.Add(10*time.Second + time.Duration(i)*time.Second/15)
+		c := ui.Render(107, 45, ui.View{Page: ui.News, Snap: snap, Feeds: fv, Now: now}, th, true)
 		fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: float64(i) / 15}), 4, 8, 0)
 	}
 }

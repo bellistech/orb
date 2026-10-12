@@ -14,21 +14,17 @@ const rotateEvery = 15 * time.Second
 
 func newsGrid(w int) []row {
 	weather := slot{nil, 0, []slot{{drawNow, 40, nil}, {drawHourly, 26, nil}, {drawDaily, 34, nil}}}
-	cats := make([]slot, 6)
-	for i := range cats {
-		cats[i] = slot{newsPanel(i), 1, nil}
-	}
 	switch {
 	case w >= 180:
 		weather.weight = 30
-		return []row{{1, []slot{weather, {newsColumns(3), 70, nil}}}}
+		return []row{{1, []slot{weather, {nil, 70, []slot{{drawReader, 58, nil}, {newsColumns(3), 42, nil}}}}}}
 	case w >= 100:
 		weather.weight = 36
-		return []row{{1, []slot{weather, {newsColumns(2), 64, nil}}}}
+		return []row{{1, []slot{weather, {nil, 64, []slot{{drawReader, 58, nil}, {newsColumns(2), 42, nil}}}}}}
 	default:
-		out := []row{{18, []slot{{drawNow, 1, nil}}}, {14, []slot{{drawDaily, 1, nil}}}}
-		for _, c := range cats {
-			out = append(out, row{12, []slot{c}})
+		out := []row{{24, []slot{{drawReader, 1, nil}}}, {16, []slot{{drawNow, 1, nil}}}, {12, []slot{{drawDaily, 1, nil}}}}
+		for i := range 6 {
+			out = append(out, row{10, []slot{{newsPanel(i), 1, nil}}})
 		}
 		return out
 	}
@@ -80,10 +76,8 @@ func newsPanel(i int) drawFn {
 		}
 		c := f.News.Categories[i]
 		accent := t.accent(i)
+		// One line per headline: the reader above carries the long form.
 		lines := 1
-		if r.W < 70 {
-			lines = 2
-		}
 		per := max((r.H-2)/lines, 1)
 		items := c.Items[:min(len(c.Items), 4*per)]
 		pages := max((len(items)+per-1)/per, 1)
