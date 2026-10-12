@@ -39,10 +39,11 @@ type Model struct {
 	w, h     int
 }
 
-// New returns a model sampling every interval, starting on theme and page.
-// With demo it shows synthetic data instead of the host's. feedView may be
-// nil.
-func New(interval time.Duration, theme string, page ui.Page, demo bool, feedView func() feeds.View, sockets func(bool)) Model {
+// New returns a model sampling source every interval, starting on theme and
+// page. source must be the one main configured (socket demand, the root
+// helper's owner lookup); sockets switches socket reading on while the
+// network page shows. feedView and sockets may be nil.
+func New(interval time.Duration, theme string, page ui.Page, source func() *sys.Snapshot, feedView func() feeds.View, sockets func(bool)) Model {
 	if feedView == nil {
 		feedView = func() feeds.View { return feeds.View{} }
 	}
@@ -50,12 +51,7 @@ func New(interval time.Duration, theme string, page ui.Page, demo bool, feedView
 		sockets = func(bool) {}
 	}
 	sockets(page == ui.Net)
-	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}, sockets: sockets}
-	if demo {
-		m.source = func() *sys.Snapshot { return sys.Demo(time.Now()) }
-	} else {
-		m.source = sys.NewSampler().Sample
-	}
+	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}, sockets: sockets, source: source}
 	for i, t := range ui.Themes {
 		if t.Name == theme {
 			m.theme = i

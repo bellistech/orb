@@ -158,7 +158,7 @@ func main() {
 		if h, err := priv.StartHelper(); err != nil {
 			fmt.Fprintf(os.Stderr, "orb: warning: %v; the network page will not see other users' processes\n", err)
 		} else {
-			sampler.Owners = h.Owners
+			sampler.Owners, sampler.AllOwners = h.Owners, true
 			defer h.Close()
 		}
 		target := priv.TargetFromEnv(os.Getenv)
@@ -209,7 +209,7 @@ func main() {
 		return
 	}
 
-	if _, err := tea.NewProgram(tui.New(*interval, th.Name, startPage, *demo, feedView, wantSockets)).Run(); err != nil {
+	if _, err := tea.NewProgram(tui.New(*interval, th.Name, startPage, src, feedView, wantSockets)).Run(); err != nil {
 		fail("%v", err)
 	}
 }
