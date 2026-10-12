@@ -70,7 +70,7 @@ func Load(path string) (c Config, warn string, err error) {
 	if st.Size() > maxSize {
 		return Config{}, "", fmt.Errorf("%s: larger than %d bytes", path, maxSize)
 	}
-	if st.Mode().Perm()&0o077 != 0 {
+	if st.Mode().IsRegular() && st.Mode().Perm()&0o077 != 0 {
 		warn = fmt.Sprintf("%s is readable by others; run: chmod 600 %s", path, path)
 	}
 

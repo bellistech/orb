@@ -37,7 +37,7 @@ func OrbColor(t *Theme, accent canvas.Color, mist, d float64) canvas.Color {
 	} else {
 		c = Mix(accent, hot, (mist-0.5)*2)
 	}
-	c = Mix(c, canvas.RGB(255, 255, 255), max(0, 0.35-d)*0.9) // glowing core
+	c = Mix(c, canvas.RGB(255, 255, 255), max(0, 0.35-d)*0.9)  // glowing core
 	return Mix(c, Mix(t.BG, accent, 0.2), math.Pow(d, 3)*0.75) // darker limb
 }
 

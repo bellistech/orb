@@ -71,8 +71,11 @@ type Sampler struct {
 	// WantSockets turns socket reading on; the UI sets it while the
 	// network page is up. Safe to set from any goroutine.
 	WantSockets atomic.Bool
-	sockets     []Socket
-	socketsAt   time.Time
+	// Owners finds socket owners; nil scans /proc directly. Set before
+	// the first Sample.
+	Owners    OwnerFunc
+	sockets   []Socket
+	socketsAt time.Time
 }
 
 // socketEvery is how often sockets are re-read while wanted: walking every
@@ -199,7 +202,7 @@ func (s *Sampler) Sample() *Snapshot {
 
 	if s.WantSockets.Load() {
 		if s.sockets == nil || now.Sub(s.socketsAt) >= socketEvery {
-			s.sockets, s.socketsAt = ReadSockets(), now
+			s.sockets, s.socketsAt = ReadSockets(s.Owners), now
 			if s.sockets == nil {
 				s.sockets = []Socket{}
 			}

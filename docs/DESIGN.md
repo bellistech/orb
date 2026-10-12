@@ -88,6 +88,14 @@ counts by state and top peers; the interfaces panel. Sockets come from
 `/proc/<pid>/fd` (bounded walk, ~5 ms). The sampler reads them every 2 s,
 and only while the page asks.
 
+## Privileges
+
+Run as root, orb splits itself (ADR-0002): a helper with only
+CAP_DAC_READ_SEARCH and CAP_SYS_PTRACE, as nobody, with no network, maps
+socket inodes to processes; the main process drops to the invoking user
+with no capabilities (CAP_SYS_TTY_CONFIG only if it took a console) before
+fetching any feed.
+
 ## Rendering
 
 A cell canvas (rune + fg + bg per cell) with panels drawing into clipped

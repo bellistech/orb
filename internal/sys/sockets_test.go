@@ -113,7 +113,7 @@ func TestReadSocketsLive(t *testing.T) {
 	if _, err := os.Stat("/proc/net/tcp"); err != nil {
 		t.Skip("no /proc/net")
 	}
-	for _, s := range ReadSockets() {
+	for _, s := range ReadSockets(nil) {
 		if s.Proto == "" || s.State == "" {
 			t.Fatalf("incomplete socket %+v", s)
 		}

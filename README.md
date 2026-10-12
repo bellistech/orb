@@ -55,9 +55,12 @@ or as root from anywhere, including SSH: `sudo orb -gfx` takes a free
 console, switches the monitor to it, and switches back when you quit.
 Ctrl+Alt+F-key switches work; orb pauses while away. `q` or Ctrl+C quits.
 
-Run as root to see every process on the network page. Under sudo, orb reads
-the invoking user's `~/.config/orb/config`. As root, feed fetching and
-parsing run as root too.
+Run as root to see every process on the network page. orb does not stay
+root: a small helper keeps only what reading other processes' sockets needs
+(as nobody, with no network), and the main process drops to you with no
+capabilities before it fetches anything. See
+[ADR-0002](docs/adr/0002-privilege-separation.md). Under sudo, orb reads the
+invoking user's `~/.config/orb/config`.
 
 If a killed process leaves the console blank:
 
@@ -111,6 +114,7 @@ Layout adapts to the size: two rows of three columns at 180+ cells wide, three r
 ```bash
 make test      # race-enabled tests
 make lint      # go vet + staticcheck
+make test-priv # the root drop for real, inside a user namespace
 make demo      # run against synthetic data
 ```
 
