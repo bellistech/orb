@@ -23,6 +23,10 @@ type View struct {
 	Snap  *sys.Snapshot
 	Feeds feeds.View
 	Now   time.Time // wall clock for the header and news rotation
+
+	// Reader, when set, positions the news reader; otherwise it runs from
+	// the time since the news was fetched.
+	Reader ReaderState
 }
 
 type drawFn func(canvas.Region, *View, *Theme)

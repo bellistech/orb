@@ -13,7 +13,7 @@ nocterm -once 215x45        # print one frame and exit
 nocterm -gfx -once 3440x1440 > frame.png
 ```
 
-Keys: `d` dashboard, `w` news & weather, `t` next theme, `q` quit.
+Keys: `d` dashboard, `w` news & weather, `space` pause/resume the news reader, `t` next theme, `q` quit.
 
 ## Configuration
 

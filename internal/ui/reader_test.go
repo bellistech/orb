@@ -87,3 +87,39 @@ func TestWrapAll(t *testing.T) {
 		t.Fatal("zero width")
 	}
 }
+
+func TestReaderClock(t *testing.T) {
+	t0 := time.Unix(1_800_000_000, 0)
+	n1, n2 := &feeds.News{}, &feeds.News{}
+	view := func(n *feeds.News, at, now time.Time) View {
+		return View{Now: now, Feeds: feeds.View{News: n, NewsAt: at}}
+	}
+	var c ReaderClock
+	v := view(n1, t0, t0.Add(10*time.Second))
+	c.Apply(&v)
+	if v.Reader.Elapsed != 10*time.Second || v.Reader.Paused {
+		t.Fatalf("running: %+v", v.Reader)
+	}
+
+	c.Toggle(t0.Add(10 * time.Second)) // pause
+	// Time passes and a new fetch lands: the reader stays put on the old news.
+	v = view(n2, t0.Add(60*time.Second), t0.Add(70*time.Second))
+	c.Apply(&v)
+	if !v.Reader.Paused || v.Reader.Elapsed != 10*time.Second || v.Feeds.News != n1 || !v.Feeds.NewsAt.Equal(t0) {
+		t.Fatalf("paused: %+v news=%p", v.Reader, v.Feeds.News)
+	}
+
+	c.Toggle(t0.Add(70 * time.Second)) // resume: 60s were spent paused
+	v = view(n1, t0, t0.Add(75*time.Second))
+	c.Apply(&v)
+	if v.Reader.Paused || v.Reader.Elapsed != 15*time.Second {
+		t.Fatalf("resumed: %+v", v.Reader)
+	}
+
+	// New news after resuming restarts the cycle.
+	v = view(n2, t0.Add(80*time.Second), t0.Add(83*time.Second))
+	c.Apply(&v)
+	if v.Reader.Elapsed != 3*time.Second {
+		t.Fatalf("new news: %+v", v.Reader)
+	}
+}

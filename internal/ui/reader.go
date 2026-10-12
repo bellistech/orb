@@ -166,13 +166,20 @@ func drawReader(r canvas.Region, v *View, t *Theme) {
 		in.Text(0, 0, "no summaries in this feed", t.Dim)
 		return
 	}
-	pos := locate(plans, total, v.Now.Sub(v.Feeds.NewsAt))
+	el := v.Now.Sub(v.Feeds.NewsAt)
+	if v.Reader.Set {
+		el = v.Reader.Elapsed
+	}
+	pos := locate(plans, total, el)
 	p := plans[pos.plan]
 	cat := n.Categories[p.story.cat]
 	accent := t.accent(p.story.cat)
 	sub := fmt.Sprintf("story %d/%d", pos.plan+1, len(plans))
 	if len(p.pages) > 1 {
 		sub += fmt.Sprintf(" · page %d/%d", pos.page+1, len(p.pages))
+	}
+	if v.Reader.Paused {
+		sub = "PAUSED · space resumes · " + sub
 	}
 	in := Frame(r, t, cat.Name, sub, accent)
 	if in.Empty() {
@@ -232,4 +239,52 @@ func wrapAll(s string, w int) []string {
 		out = append(out, cur)
 	}
 	return out
+}
+
+// ReaderClock is the reader's pausable clock. Run loops own one, toggle it
+// on the space key, and Apply it to each View. While paused it also holds
+// on to the news being read, so a feed refresh cannot swap the story out
+// from under the reader.
+type ReaderClock struct {
+	paused   bool
+	pausedAt time.Time
+	offset   time.Duration // total time spent paused since the news arrived
+	news     *feeds.News
+	newsAt   time.Time
+}
+
+// Toggle pauses or resumes at now.
+func (c *ReaderClock) Toggle(now time.Time) {
+	if c.paused {
+		c.offset += now.Sub(c.pausedAt)
+		c.paused = false
+		return
+	}
+	c.paused, c.pausedAt = true, now
+}
+
+// Paused reports whether the reader is paused.
+func (c *ReaderClock) Paused() bool { return c.paused }
+
+// Apply sets v's reader position from the clock.
+func (c *ReaderClock) Apply(v *View) {
+	if c.paused {
+		if c.news != nil {
+			v.Feeds.News, v.Feeds.NewsAt = c.news, c.newsAt
+		}
+		v.Reader = ReaderState{Set: true, Paused: true, Elapsed: c.pausedAt.Sub(c.newsAt) - c.offset}
+		return
+	}
+	if v.Feeds.News != c.news {
+		// New news restarts the cycle from its first story.
+		c.news, c.newsAt, c.offset = v.Feeds.News, v.Feeds.NewsAt, 0
+	}
+	v.Reader = ReaderState{Set: true, Elapsed: v.Now.Sub(c.newsAt) - c.offset}
+}
+
+// ReaderState is where the reader is, when a run loop drives it.
+type ReaderState struct {
+	Set     bool
+	Paused  bool
+	Elapsed time.Duration
 }
