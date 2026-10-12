@@ -42,10 +42,10 @@ func TestLocateWalksTheSchedule(t *testing.T) {
 		label string
 	}{
 		{0, readerPos{0, 0, 0, false}, "intro shows no body"},
-		{readerIntro + sec(0.2), readerPos{0, 0, 4, false}, "typing at 20/s"},
-		{readerIntro + sec(1), readerPos{0, 0, 8, true}, "page typed, holding"},
-		{readerIntro + sec(0.4) + readerHold + sec(0.2), readerPos{0, 1, 4, false}, "second page types"},
-		{total + readerIntro + sec(0.2), readerPos{0, 0, 4, false}, "cycle wraps"},
+		{readerIntro + sec(0.1), readerPos{0, 0, 4, false}, "typing at 40/s"},
+		{readerIntro + sec(0.5), readerPos{0, 0, 8, true}, "page typed, holding"},
+		{readerIntro + sec(0.2) + readerHold + sec(0.1), readerPos{0, 1, 4, false}, "second page types"},
+		{total + readerIntro + sec(0.1), readerPos{0, 0, 4, false}, "cycle wraps"},
 		{-sec(1), readerPos{1, 0, 2, true}, "negative elapsed wraps"},
 	} {
 		if got := locate(plans, total, tc.at); got != tc.want {

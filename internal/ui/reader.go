@@ -13,7 +13,7 @@ import (
 // Reader pacing: the headline shows alone briefly, then the summary types
 // out at roughly reading speed, page by page, holding each full page.
 const (
-	typeRate    = 20 // characters per second
+	typeRate    = 40 // characters per second
 	readerIntro = 1500 * time.Millisecond
 	readerHold  = 4 * time.Second
 	maxStories  = 48
