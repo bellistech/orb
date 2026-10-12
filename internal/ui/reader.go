@@ -211,13 +211,28 @@ func drawReader(r canvas.Region, v *View, t *Theme) {
 	mx := in.Bold(x0, headRows, age, ageCol)
 	in.Text(mx+1, headRows, "· "+p.story.item.Feed, t.Dim)
 
-	left := pos.shown
+	// Letters glow as they are typed and cool to the text color, like ink
+	// drying on a spell scroll.
+	glowTo := Mix(accent, canvas.RGB(255, 255, 255), 0.5)
+	ci := 0
 	for i, l := range p.pages[pos.page].lines {
-		if left <= 0 {
-			break
+		y := headRows + 2 + i*sc
+		for j, ch := range l {
+			if ci >= pos.shown {
+				break
+			}
+			age := float64(pos.shown-ci) / typeRate // seconds since typed
+			col := t.FG
+			if g := 1 - age/0.35; g > 0 {
+				col = Mix(t.FG, glowTo, g)
+			}
+			if sc == 2 {
+				in.Double(x0+j*2, y, string(ch), col, false)
+			} else {
+				in.Set(x0+j, y, ch, col)
+			}
+			ci++
 		}
-		put(headRows+2+i*sc, l[:min(len(l), left)], t.FG, false)
-		left -= len(l)
 	}
 	// The RPG "more" prompt: blinks once a page is typed and more follow.
 	if pos.typed && pos.page < len(p.pages)-1 && v.Now.UnixMilli()/500%2 == 0 {

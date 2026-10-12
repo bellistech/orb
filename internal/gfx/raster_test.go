@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"orb/internal/canvas"
+	"orb/internal/feeds"
 	"orb/internal/sys"
 	"orb/internal/ui"
 )
@@ -123,5 +124,55 @@ func TestQuarterScalesGlyph(t *testing.T) {
 	}
 	if quarter(g, 0) != (glyph{}) || quarter(g, 5) != (glyph{}) {
 		t.Fatal("bad quadrant should be empty")
+	}
+}
+
+// The incremental renderer (tile diffing, overlays, stars) must always
+// produce exactly the frame a fresh full render would: no trails, no
+// stale tiles, whatever the sequence of frames.
+func TestIncrementalMatchesFullRender(t *testing.T) {
+	start := time.Unix(1_800_000_000, 0)
+	fv := feeds.Demo(start)
+	steps := []float64{0, 0.07, 0.5, 1.3, 2.9, 3.0, 4.4, 5.05, 7.7, 8.0, 9.1, 12.5, 13.1, 20.2}
+	for _, th := range []*ui.Theme{ui.Themes[0], ui.Themes[len(ui.Themes)-1]} {
+		for _, page := range []ui.Page{ui.Dash, ui.News, ui.Net} {
+			// One renderer across consecutive frames, as the run loop does.
+			inc := NewRenderer()
+			for i, step := range steps {
+				now := start.Add(time.Duration(step * float64(time.Second)))
+				c := ui.Render(107, 45, ui.View{Page: page, Snap: sys.Demo(now), Feeds: fv, Now: now}, th, true)
+				a := Anim{T: 100 + step}
+				inc.Draw(c, th, a)
+				full := NewRenderer()
+				full.Draw(c, th, a)
+				got, want := inc.Frame().Pix, full.Frame().Pix
+				for p := range want {
+					if got[p] != want[p] {
+						t.Fatalf("%s %v step %d (t=%.2f): pixel %d,%d = %#06x, full render %#06x",
+							th.Name, page, i, step, p%inc.Frame().W, p/inc.Frame().W, got[p], want[p])
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestOrbStaysInItsRect(t *testing.T) {
+	th := ui.Themes[0]
+	c := canvas.New(20, 10, th.BG)
+	c.Full().Sub(2, 0, 4, 5).AddOrb(th.Host)
+	r := NewRenderer()
+	r.Draw(c, th, Anim{T: 5})
+	bg := rgb(th.BG)
+	for y := range r.Frame().H {
+		for x := range r.Frame().W {
+			in := x >= 2*Tile && x < 6*Tile && y < 5*Tile
+			if !in && r.Frame().Pix[y*r.Frame().W+x] != bg && hash(uint32(x), uint32(y))%997 != 0 {
+				t.Fatalf("orb leaked to %d,%d", x, y)
+			}
+		}
+	}
+	if r.Frame().Pix[2*Tile*1+16+20*r.Frame().W] == bg {
+		t.Fatal("orb not drawn")
 	}
 }

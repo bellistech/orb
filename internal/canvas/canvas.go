@@ -55,6 +55,10 @@ type Canvas struct {
 	// Windows records each framed panel so a pixel backend can draw
 	// richer frames than box-drawing characters allow.
 	Windows []Window
+
+	// Orbs marks where the emblem goes; a pixel backend draws it there,
+	// over whatever the cells hold.
+	Orbs []Window
 }
 
 // Window is a framed panel in absolute cell coordinates.
@@ -98,6 +102,13 @@ func (r Region) Square() bool { return r.c != nil && r.c.Square }
 func (r Region) AddWindow(accent Color) {
 	if r.c != nil && !r.Empty() {
 		r.c.Windows = append(r.c.Windows, Window{X: r.X, Y: r.Y, W: r.W, H: r.H, Accent: accent})
+	}
+}
+
+// AddOrb records r as the place for the emblem.
+func (r Region) AddOrb(accent Color) {
+	if r.c != nil && !r.Empty() {
+		r.c.Orbs = append(r.c.Orbs, Window{X: r.X, Y: r.Y, W: r.W, H: r.H, Accent: accent})
 	}
 }
 
