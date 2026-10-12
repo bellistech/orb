@@ -58,9 +58,18 @@ page is up. Weather on the left: current conditions with 12x8 pixel art
 (rain, snow and storms fall, one step per second), the hourly temperature as
 a heat-colored curve over temperatures, mini icons and hours, and a five-day
 forecast with range bars on a shared min..max track. Temperatures use the
-heat ramp from 20°F (cool) to 105°F (hot). On the right, six headline
-categories, newest first, age colored by freshness, pages rotating every
-15 s with staggered starts. Feeds come from bellis.tech's JSON caches,
+heat ramp from 20°F (cool) to 105°F (hot).
+
+On the right, the reader: one story at a time, categories interleaved
+newest first, only items whose feed description holds a real summary (80+
+characters after stripping HTML and boilerplate). The headline shows for
+1.5 s, then the body types at 20 characters/s (about reading speed) into
+lines of at most 72 characters; each typed page holds 4 s, with a blinking
+▼ when another follows. The schedule is a pure function of time since the
+news was fetched, so every frame is computable without state. Under it, six
+headline windows (one line per headline), pages rotating every 15 s with
+staggered starts. The page lays out every frame while typing; tile diffing
+keeps a frame at ~0.15 ms. Feeds come from bellis.tech's JSON caches,
 configured in `~/.config/nocterm/config`.
 
 ## Rendering

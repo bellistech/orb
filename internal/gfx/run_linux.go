@@ -101,7 +101,9 @@ func Run(o Options) error {
 		now := time.Now()
 		k := min(float64(now.Sub(sampled))/float64(tween), 1)
 		fv := feedView()
-		if c == nil || k < 1 || c.sec != now.Unix() || c.theme != theme || c.page != page || c.feeds != fv.Version {
+		// The news page types text continuously, so it lays out every
+		// frame; tile diffing keeps that to the characters that appeared.
+		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != theme || c.page != page || c.feeds != fv.Version {
 			snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
 			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now}
 			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), theme, page, fv.Version}

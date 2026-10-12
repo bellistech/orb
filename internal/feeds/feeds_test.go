@@ -216,3 +216,44 @@ func TestStorePoll(t *testing.T) {
 		t.Fatalf("view = %+v", v)
 	}
 }
+
+func TestSummary(t *testing.T) {
+	for in, want := range map[string]string{
+		"&lt;p&gt;With the &lt;a href=&quot;/x&quot;&gt;growing number&lt;/a&gt; of SRv6.&lt;/p&gt;": "With the growing number of SRv6.",
+		"<p>Body text here.</p><p>The post Foo appeared first on Bar.</p>":                           "Body text here.",
+		"Some words. Continue reading →":                                                             "Some words.",
+		"Agents arrested someone. Read more":                                                         "Agents arrested someone.",
+		`<a href="https://news.ycombinator.com/item?id=1">Comments</a>`:                              "",
+		"<script>alert(1)</script>Real text":                                                         "Real text",
+		"a < b and c > d":                                                                            "a < b and c > d",
+	} {
+		if got := Summary(in, 400); got != want {
+			t.Errorf("Summary(%q) = %q, want %q", in, got, want)
+		}
+	}
+	long := strings.Repeat("Sentence one is here. ", 40)
+	got := Summary(long, 100)
+	if len(got) > 100 || !strings.HasSuffix(got, "here.") {
+		t.Errorf("long summary not cut at a sentence: %q", got)
+	}
+}
+
+func FuzzSummary(f *testing.F) {
+	f.Add("<p>x</p>", 50)
+	f.Add("&lt;b&gt;&amp;amp;", 10)
+	f.Fuzz(func(t *testing.T, s string, n int) {
+		n = n%2000 + 1
+		if n < 1 {
+			n = 1
+		}
+		out := Summary(s, n)
+		if len(out) > n {
+			t.Fatalf("len %d > %d", len(out), n)
+		}
+		for _, r := range out {
+			if r < 0x20 || r > 0x7e {
+				t.Fatalf("non-printable %U", r)
+			}
+		}
+	})
+}

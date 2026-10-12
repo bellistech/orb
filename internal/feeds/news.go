@@ -25,6 +25,7 @@ type Item struct {
 	Title     string
 	Feed      string
 	Published time.Time // zero when the feed gave none
+	Summary   string    // plain text; "" when the feed gave nothing readable
 }
 
 const (
@@ -33,6 +34,7 @@ const (
 	maxItemsPerFeed = 200
 	maxItemsShown   = 60
 	maxTitle        = 160
+	maxSummary      = 1200
 )
 
 type rawNews struct {
@@ -41,8 +43,9 @@ type rawNews struct {
 		Feeds []struct {
 			FeedName string `json:"feed_name"`
 			Items    []struct {
-				Title     string `json:"title"`
-				Published string `json:"published"`
+				Title       string `json:"title"`
+				Published   string `json:"published"`
+				Description string `json:"description"`
 			} `json:"items"`
 		} `json:"feeds"`
 	} `json:"categories"`
@@ -112,7 +115,11 @@ func ParseNews(b []byte) (*News, error) {
 				}
 				seen[title] = true
 				pub, _ := time.Parse(time.RFC3339Nano, it.Published)
-				c.Items = append(c.Items, Item{Title: title, Feed: feed, Published: pub})
+				sum := Summary(it.Description, maxSummary)
+				if len(sum) < MinSummary {
+					sum = ""
+				}
+				c.Items = append(c.Items, Item{Title: title, Feed: feed, Published: pub, Summary: sum})
 			}
 		}
 		sort.SliceStable(c.Items, func(i, j int) bool {
