@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"nocterm/internal/canvas"
+	"nocterm/internal/feeds"
 	"nocterm/internal/sys"
 )
 
@@ -78,13 +79,20 @@ func TestHeatEndpoints(t *testing.T) {
 // Every size, theme and data source must render without panicking and fill
 // exactly w x h cells.
 func TestRenderAnySize(t *testing.T) {
-	demo := sys.Demo(time.Unix(1_800_000_000, 0))
+	now := time.Unix(1_800_000_000, 0)
+	demo := sys.Demo(now)
 	empty := &sys.Snapshot{Time: demo.Time}
+	views := []View{
+		{Page: Dash, Snap: demo}, {Page: Dash, Snap: empty}, {Page: Dash},
+		{Page: News, Snap: demo, Feeds: feeds.Demo(now), Now: now},
+		{Page: News, Snap: demo, Feeds: feeds.View{NewsOn: true, WeatherErr: "timeout", WeatherOn: true}},
+		{Page: News, Snap: empty},
+	}
 	for _, th := range Themes {
-		for _, snap := range []*sys.Snapshot{demo, empty, nil} {
+		for _, v := range views {
 			for w := 1; w <= 260; w += 7 {
 				for h := 1; h <= 90; h += 5 {
-					lines := strings.Split(Render(w, h, snap, th, false).Plain(), "\n")
+					lines := strings.Split(Render(w, h, v, th, w%2 == 0).Plain(), "\n")
 					if len(lines) != h {
 						t.Fatalf("%s %dx%d: %d lines", th.Name, w, h, len(lines))
 					}
@@ -103,6 +111,36 @@ func TestBytes(t *testing.T) {
 	for in, want := range map[float64]string{0: "0B", 1023: "1023B", 1536: "1.5K", 12 << 30: "12G"} {
 		if got := Bytes(in); got != want {
 			t.Errorf("Bytes(%v) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestWrap(t *testing.T) {
+	for _, tc := range []struct {
+		s    string
+		w, n int
+		want string
+	}{
+		{"one two three", 7, 2, "one two|three"},
+		{"one two three four", 7, 2, "one two|three …"},
+		{"supercalifragilistic", 5, 2, "supe…"},
+		{"", 5, 2, ""},
+		{"a b", 0, 2, ""},
+	} {
+		if got := strings.Join(wrap(tc.s, tc.w, tc.n), "|"); got != tc.want {
+			t.Errorf("wrap(%q,%d,%d) = %q, want %q", tc.s, tc.w, tc.n, got, tc.want)
+		}
+	}
+}
+
+func TestHourLabel(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		w    int
+		want string
+	}{{"11 AM", 5, "11AM"}, {"11 AM", 3, "11"}, {"9 PM", 4, "9PM"}, {"12 PM", 1, "…"}} {
+		if got := hourLabel(tc.in, tc.w); got != tc.want {
+			t.Errorf("hourLabel(%q,%d) = %q, want %q", tc.in, tc.w, got, tc.want)
 		}
 	}
 }

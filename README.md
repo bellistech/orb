@@ -5,6 +5,7 @@ View-only host health dashboard for the terminal. Built for a big monitor across
 ```bash
 nocterm                     # live dashboard in the terminal
 nocterm -gfx                # pixel graphics on the local console (no desktop)
+nocterm -page news          # start on news & weather instead of the dashboard
 nocterm -theme chrono       # phosphor (default), gizzard, lantern, chrono
 nocterm -interval 2s        # sample every 2s
 nocterm -demo               # synthetic data
@@ -12,7 +13,27 @@ nocterm -once 215x45        # print one frame and exit
 nocterm -gfx -once 3440x1440 > frame.png
 ```
 
-Keys: `t` next theme, `q` quit.
+Keys: `d` dashboard, `w` news & weather, `t` next theme, `q` quit.
+
+## Configuration
+
+`~/.config/nocterm/config` (or `-config`), `key = value`, `#` comments.
+Flags override it. Keep it `chmod 600`: nocterm warns otherwise, since feed
+URLs may be private.
+
+```
+theme = phosphor            # phosphor, gizzard, lantern, chrono
+page = dash                 # dash or news
+interval = 1s
+scale = 4                   # graphics mode
+fps = 15                    # graphics mode, 0 = no animation
+news_url = https://example.com/news.json
+weather_url = https://example.com/weather_forecast.json
+```
+
+Feed URLs must be https (http only for localhost). News refreshes every 15
+minutes, weather every 10; failures retry from 30s, backing off. Errors show
+on screen in a few words and never include the URL.
 
 ## Graphics mode
 
@@ -57,6 +78,10 @@ Requires: Linux, Go 1.27+ to build. Truecolor terminal recommended; on the bare 
 | Disks | `/proc/mounts` + `statfs` usage, `/proc/diskstats` read/write |
 | Thermal | hwmon temperatures and fans, hottest-sensor history |
 | Processes | `/proc/[pid]/stat` top by CPU |
+
+News & weather page (`w`): current conditions with animated weather art,
+hourly temperature curve, five-day range bars, and six headline categories
+that rotate pages every 15 seconds, newest first, freshness colored.
 
 Layout adapts to the size: two rows of three columns at 180+ cells wide, three rows of two at 100+, a single stack below that.
 

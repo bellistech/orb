@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"nocterm/internal/canvas"
+	"nocterm/internal/feeds"
 	"nocterm/internal/sys"
 	"nocterm/internal/ui"
 )
@@ -23,6 +24,8 @@ type Options struct {
 	Theme    int // index into ui.Themes
 	Scale    int // pixels per logical pixel
 	FPS      int // animation frames per second; 0 = redraw on samples only
+	Page     ui.Page
+	Feeds    func() feeds.View // may be nil
 }
 
 const tween = 600 * time.Millisecond
@@ -73,7 +76,11 @@ func Run(o Options) error {
 		}
 	}()
 
-	theme := o.Theme
+	theme, page := o.Theme, o.Page
+	feedView := o.Feeds
+	if feedView == nil {
+		feedView = func() feeds.View { return feeds.View{} }
+	}
 	start := time.Now()
 	cur := o.Source()
 	prev, sampled := cur, start
@@ -93,9 +100,11 @@ func Run(o Options) error {
 		th := ui.Themes[theme]
 		now := time.Now()
 		k := min(float64(now.Sub(sampled))/float64(tween), 1)
-		if c == nil || k < 1 || c.sec != now.Unix() || c.theme != theme {
+		fv := feedView()
+		if c == nil || k < 1 || c.sec != now.Unix() || c.theme != theme || c.page != page || c.feeds != fv.Version {
 			snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
-			c = &canvasCache{ui.Render(cols, rows, snap, th, true), now.Unix(), theme}
+			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now}
+			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), theme, page, fv.Version}
 		}
 		a := Anim{}
 		if o.FPS > 0 {
@@ -139,6 +148,12 @@ func Run(o Options) error {
 			case 't', 'T':
 				theme = (theme + 1) % len(ui.Themes)
 				redrawAll()
+			case 'd', 'D':
+				page = ui.Dash
+				draw()
+			case 'w', 'W':
+				page = ui.News
+				draw()
 			}
 		case s := <-sigs:
 			switch s {
@@ -164,4 +179,6 @@ type canvasCache struct {
 	canvas *canvas.Canvas
 	sec    int64
 	theme  int
+	page   ui.Page
+	feeds  uint64
 }

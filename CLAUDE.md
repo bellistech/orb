@@ -21,7 +21,7 @@ make build          # ./nocterm
 make test           # go test ./... -count=1 -race
 make lint           # go vet + staticcheck
 make fmt            # gofmt -s -w .
-make demo           # run with synthetic data
+make demo           # run with synthetic data (both pages)
 ./nocterm -gfx -demo -once 3440x1440 > f.png      # graphics-mode frame as PNG
 ./nocterm -once 215x45 [-demo] [-theme lantern]   # print one frame and exit
 ```
@@ -31,7 +31,9 @@ make demo           # run with synthetic data
 - `cmd/nocterm/main.go` — entry point, stdlib `flag`
 - `internal/sys/` — metric readers (`/proc/stat`, `meminfo`, `net/dev`, `diskstats`, `mounts`, hwmon, amdgpu sysfs, `/proc/[pid]/stat`), `Sampler` turns counters into rates + 600-sample histories, `Demo` synthesizes a busy host
 - `internal/canvas/` — cell grid (rune + fg + bg + bold), clipped regions, truecolor SGR serializer
-- `internal/ui/` — themes, widgets (frame, gauge, braille graph, heatmap, block-font clock), panels, responsive grid. Pure: snapshot in, canvas out
+- `internal/ui/` — themes, widgets (frame, gauge, braille graph, heatmap, block-font clock, range bar), pages (`Dash`, `News`), panels, responsive grid, weather sprites. Pure: `ui.View` in, canvas out
+- `internal/feeds/` — news + weather JSON: fetch (UA `nocterm/<version>`, https only, 8 MiB cap, redirects re-checked), parse + validate, `Clean` (HTML unescape, transliterate, printable ASCII only, emoji dropped; fuzzed), `Poll` with backoff, `Store` (RWMutex snapshot + version), `Brief` (screen-safe errors, never the URL), `Demo`
+- `internal/config/` — `~/.config/nocterm/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override
 - `internal/tui/` — Bubble Tea v2 program: ticks the sampler, renders, handles resize and keys
 - `internal/gfx/` — graphics mode: hand-drawn 5x7 font in 8x8 tiles, procedural blocks/braille, RPG-style windows (from `canvas.Windows`), animation (tween via `sys.Lerp`, title shimmer, stars), fbdev driver with validated geometry and dirty-row blits, VT control (KD_GRAPHICS, VT_PROCESS switching, raw keys, restore on every exit), PNG output
 
@@ -45,8 +47,10 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - No cobra (stdlib `flag`), no logging framework (stderr)
 - Build flags: `-trimpath -s -w`, version via `-X main.version=$(VERSION)`
 - Readers are best-effort: a missing file is an empty value, never an error or panic
+- Feed content is hostile: every string through `feeds.Clean`, every number range-checked, nothing from a feed reaches the terminal unsanitized
+- The news URL is private: it lives only in the user's config file, never in the repo, docs, tests or on screen
 - Exactly one sample in flight; the next tick is scheduled when a sample lands
-- New panels: a `drawFn` in `internal/ui/panels.go`, a slot in `grid()` per breakpoint, demo data in `sys.Demo`
+- New panels: a `drawFn` in `internal/ui/` (dashboard panels wrap with `dash()`), a slot in `grid()`/`newsGrid()` per breakpoint, demo data in `sys.Demo` / `feeds.Demo`
 - `TestRenderAnySize` must stay green: every panel draws into any box and clips
 - Check visuals with `-once` at 215x45 (desk), 120x40, 80x60, and `-gfx -once 3440x1440 > f.png`, before calling a UI change done
 - Every rune a panel draws needs a glyph or shape in `gfx` (`TestEveryDashboardRuneSupported`)

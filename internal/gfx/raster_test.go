@@ -105,6 +105,6 @@ func BenchmarkFrame(b *testing.B) {
 	th := ui.Themes[0]
 	f := NewFrame(107*Tile, 45*Tile)
 	for i := range b.N {
-		Rasterize(f, ui.Render(107, 45, snap, th, true), th, Anim{T: float64(i) / 15})
+		Rasterize(f, ui.Render(107, 45, ui.View{Snap: snap}, th, true), th, Anim{T: float64(i) / 15})
 	}
 }
