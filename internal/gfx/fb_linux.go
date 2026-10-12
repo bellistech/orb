@@ -178,45 +178,41 @@ func (fb *FB) Clear(rgb uint32) {
 	}
 }
 
-// Blit draws f scaled up at (padX, padY), skipping logical rows that match
-// prev (when prev is non-nil and the same size) so animation only costs what
-// changed. It returns the number of logical rows written.
-func (fb *FB) Blit(f, prev *Frame, scale, padX, padY int) int {
+// Blit draws the given spans of f scaled up at (padX, padY); nil spans
+// means the whole frame. It returns the number of spans written. Spans that
+// would land outside the screen are skipped, never written.
+func (fb *FB) Blit(f *Frame, spans []Span, scale, padX, padY int) int {
 	if f == nil || scale < 1 || padX < 0 || padY < 0 ||
 		padX+f.W*scale > fb.W || padY+f.H*scale > fb.H {
 		return 0
 	}
-	same := prev != nil && prev.W == f.W && prev.H == f.H
+	if spans == nil {
+		spans = make([]Span, f.H)
+		for y := range spans {
+			spans[y] = Span{Y: y, X0: 0, X1: f.W}
+		}
+	}
 	bpp := fb.format.bytes
 	row := make([]byte, f.W*scale*bpp)
 	written := 0
-	for y := range f.H {
-		line := f.Pix[y*f.W : (y+1)*f.W]
-		if same && equalRow(line, prev.Pix[y*f.W:(y+1)*f.W]) {
+	for _, sp := range spans {
+		if sp.Y < 0 || sp.Y >= f.H || sp.X0 < 0 || sp.X1 > f.W || sp.X0 >= sp.X1 {
 			continue
 		}
-		for x, v := range line {
+		n := (sp.X1 - sp.X0) * scale * bpp
+		for x, v := range f.Pix[sp.Y*f.W+sp.X0 : sp.Y*f.W+sp.X1] {
 			px := fb.format.pack(v)
 			for s := range scale {
 				put(row[(x*scale+s)*bpp:], bpp, px)
 			}
 		}
 		for s := range scale {
-			off := (padY+y*scale+s)*fb.stride + padX*bpp
-			copy(fb.mem[off:off+len(row)], row)
+			off := (padY+sp.Y*scale+s)*fb.stride + (padX+sp.X0*scale)*bpp
+			copy(fb.mem[off:off+n], row[:n])
 		}
 		written++
 	}
 	return written
-}
-
-func equalRow(a, b []uint32) bool {
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func put(dst []byte, bpp int, px uint32) {
