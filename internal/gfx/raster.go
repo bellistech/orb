@@ -43,30 +43,176 @@ type Anim struct {
 	T float64 // seconds
 }
 
-// Rasterize draws canvas c into f, which must be c.W*Tile x c.H*Tile.
+// Rasterize draws canvas c into f, which must be c.W*Tile x c.H*Tile. It is
+// the stateless form of Renderer.Draw, for one-off frames such as PNGs.
 func Rasterize(f *Frame, c *canvas.Canvas, t *ui.Theme, a Anim) {
 	if f == nil || c == nil || t == nil || f.W != c.W*Tile || f.H != c.H*Tile {
 		return
 	}
-	drawBackdrop(f, t, a)
-	tops := make(map[int]int) // cell index on a window's top edge -> window
+	r := NewRenderer()
+	r.Draw(c, t, a)
+	copy(f.Pix, r.Frame().Pix)
+}
+
+// Span is a changed run of logical pixels [X0, X1) on row Y.
+type Span struct{ Y, X0, X1 int }
+
+// Renderer keeps the previous frame so each Draw only redraws what changed.
+// The backdrop and windows are a cached base layer; tiles are restored from
+// it and redrawn only when their cell, or its shimmer, changed.
+type Renderer struct {
+	base, frame *Frame
+	key         string // theme + window layout the base was built for
+	cells       []canvas.Cell
+	glow        []float64
+	stars       []star
+	dirty       []Span // per row, X0 >= X1 means clean
+}
+
+type star struct {
+	x, y int
+	h    uint32
+}
+
+// NewRenderer returns an empty renderer; the first Draw is a full frame.
+func NewRenderer() *Renderer { return &Renderer{} }
+
+// Frame is the current composed frame. Callers must not modify it.
+func (r *Renderer) Frame() *Frame { return r.frame }
+
+// Draw updates the frame to show c and returns the rows that changed.
+func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
+	if c == nil || t == nil {
+		return nil
+	}
+	if key := baseKey(c, t); r.frame == nil || r.frame.W != c.W*Tile || r.frame.H != c.H*Tile || key != r.key {
+		r.rebuild(c, t, key)
+	}
+	for i := range r.dirty {
+		r.dirty[i] = Span{Y: i, X0: r.frame.W, X1: 0}
+	}
+
+	tops := make(map[int]int, len(c.Windows)*16)
 	for i, w := range c.Windows {
-		drawWindow(f, w, t)
 		for x := w.X + 1; x < w.X+w.W-1; x++ {
 			tops[w.Y*c.W+x] = i
 		}
 	}
 	for y := range c.H {
 		for x := range c.W {
+			i := y*c.W + x
 			cell := c.CellAt(x, y)
-			wi, onTop := tops[y*c.W+x]
+			wi, onTop := tops[i]
+			glow := shimmer(c, wi, onTop, x, a)
+			if r.cells != nil && cell == r.cells[i] && glow == r.glow[i] {
+				continue
+			}
+			r.restoreTile(x, y)
 			if onTop && cell.Ch != '─' {
 				// Cut a tab out of the border behind title text.
 				top, _, _ := t.Window(c.Windows[wi].Accent)
-				f.fill(x*Tile, y*Tile, Tile, Tile, rgb(top))
+				r.frame.fill(x*Tile, y*Tile, Tile, Tile, rgb(top))
 			}
-			drawCell(f, x, y, cell, t, shimmer(c, wi, onTop, x, a))
+			drawCell(r.frame, x, y, cell, t, glow)
+			r.mark(x*Tile, y*Tile, Tile, Tile)
+			if r.cells == nil {
+				continue
+			}
+			r.cells[i], r.glow[i] = cell, glow
 		}
+	}
+	if r.cells == nil {
+		r.cells = make([]canvas.Cell, c.W*c.H)
+		r.glow = make([]float64, c.W*c.H)
+		for y := range c.H {
+			for x := range c.W {
+				r.cells[y*c.W+x] = c.CellAt(x, y)
+			}
+		}
+	}
+	r.drawStars(t, a)
+
+	out := r.dirty[:0:0]
+	for _, d := range r.dirty {
+		if d.X0 < d.X1 {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// baseKey identifies what the base layer depends on.
+func baseKey(c *canvas.Canvas, t *ui.Theme) string {
+	b := make([]byte, 0, 64+len(c.Windows)*20)
+	b = append(b, t.Name...)
+	for _, w := range c.Windows {
+		b = append(b, byte(w.X), byte(w.X>>8), byte(w.Y), byte(w.W), byte(w.W>>8), byte(w.H), w.Accent.R, w.Accent.G, w.Accent.B)
+	}
+	return string(b)
+}
+
+func (r *Renderer) rebuild(c *canvas.Canvas, t *ui.Theme, key string) {
+	w, h := c.W*Tile, c.H*Tile
+	r.key = key
+	r.base, r.frame = NewFrame(w, h), NewFrame(w, h)
+	bg := rgb(t.BG)
+	for i := range r.base.Pix {
+		r.base.Pix[i] = bg
+	}
+	for _, win := range c.Windows {
+		drawWindow(r.base, win, t)
+	}
+	copy(r.frame.Pix, r.base.Pix)
+	// Stars only where the backdrop shows through.
+	r.stars = r.stars[:0]
+	for y := range h {
+		for x := range w {
+			if hv := hash(uint32(x), uint32(y)); hv%997 == 0 && r.base.Pix[y*w+x] == bg {
+				r.stars = append(r.stars, star{x, y, hv})
+			}
+		}
+	}
+	r.cells, r.glow = nil, nil
+	r.dirty = make([]Span, h)
+	for i := range r.dirty {
+		r.dirty[i] = Span{Y: i, X0: 0, X1: w}
+	}
+}
+
+func (r *Renderer) restoreTile(cx, cy int) {
+	w := r.frame.W
+	for y := cy * Tile; y < (cy+1)*Tile; y++ {
+		o := y*w + cx*Tile
+		copy(r.frame.Pix[o:o+Tile], r.base.Pix[o:o+Tile])
+	}
+}
+
+func (r *Renderer) mark(x, y, w, h int) {
+	for yy := y; yy < y+h && yy < len(r.dirty); yy++ {
+		d := &r.dirty[yy]
+		d.X0, d.X1 = min(d.X0, x), max(d.X1, x+w)
+	}
+}
+
+// starLevels quantizes twinkle brightness so most frames change no stars.
+const starLevels = 6
+
+// drawStars twinkles the backdrop stars, touching only those whose
+// brightness step changed.
+func (r *Renderer) drawStars(t *ui.Theme, a Anim) {
+	for _, s := range r.stars {
+		lvl := uint8(2)
+		if a.T != 0 {
+			v := 0.5 + 0.5*math.Sin(a.T*(0.6+float64(s.h%7)/5)+float64(s.h%628)/100)
+			lvl = uint8(v * (starLevels - 1))
+		}
+		px := &r.frame.Pix[s.y*r.frame.W+s.x]
+		want := rgb(ui.Mix(t.BG, t.FG, 0.15+0.45*float64(lvl)/(starLevels-1)))
+		if *px == want {
+			continue
+		}
+		*px = want
+		r.mark(s.x, s.y, 1, 1)
 	}
 }
 
@@ -84,28 +230,6 @@ func shimmer(c *canvas.Canvas, wi int, onTop bool, x int, a Anim) float64 {
 	}
 	pos := float64(w.X) + phase*float64(min(w.W, 30))
 	return max(0, 1-math.Abs(float64(x)-pos)/2.5) * 0.7
-}
-
-// drawBackdrop paints the space between windows: the theme background with
-// a sparse field of slowly twinkling stars.
-func drawBackdrop(f *Frame, t *ui.Theme, a Anim) {
-	bg := rgb(t.BG)
-	for i := range f.Pix {
-		f.Pix[i] = bg
-	}
-	for y := 0; y < f.H; y++ {
-		for x := 0; x < f.W; x++ {
-			h := hash(uint32(x), uint32(y))
-			if h%997 != 0 {
-				continue
-			}
-			tw := 0.35
-			if a.T != 0 {
-				tw = 0.2 + 0.4*(0.5+0.5*math.Sin(a.T*(0.6+float64(h%7)/5)+float64(h%628)/100))
-			}
-			f.set(x, y, rgb(ui.Mix(t.BG, t.FG, tw)))
-		}
-	}
 }
 
 func hash(x, y uint32) uint32 {

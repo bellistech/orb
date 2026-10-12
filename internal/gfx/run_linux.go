@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"nocterm/internal/canvas"
 	"nocterm/internal/sys"
 	"nocterm/internal/ui"
 )
@@ -76,27 +77,38 @@ func Run(o Options) error {
 	start := time.Now()
 	cur := o.Source()
 	prev, sampled := cur, start
-	frame, last := NewFrame(cols*Tile, rows*Tile), (*Frame)(nil)
+	r := NewRenderer()
+	var c *canvasCache
 	active := true
 	fb.Clear(rgb(ui.Themes[theme].BG))
 
+	// draw is called every animation tick. It re-lays out the dashboard
+	// only when something it shows changed (a tween in progress, the
+	// clock's second, a theme switch), and the renderer then redraws only
+	// the tiles and stars that differ, so idle ticks cost almost nothing.
 	draw := func() {
 		if !active {
 			return
 		}
 		th := ui.Themes[theme]
-		k := min(float64(time.Since(sampled))/float64(tween), 1)
-		snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
+		now := time.Now()
+		k := min(float64(now.Sub(sampled))/float64(tween), 1)
+		if c == nil || k < 1 || c.sec != now.Unix() || c.theme != theme {
+			snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
+			c = &canvasCache{ui.Render(cols, rows, snap, th, true), now.Unix(), theme}
+		}
 		a := Anim{}
 		if o.FPS > 0 {
-			a.T = time.Since(start).Seconds()
+			a.T = now.Sub(start).Seconds()
 		}
-		Rasterize(frame, ui.Render(cols, rows, snap, th, true), th, a)
-		fb.Blit(frame, last, o.Scale, padX, padY)
-		if last == nil {
-			last = NewFrame(frame.W, frame.H)
+		if spans := r.Draw(c.canvas, th, a); len(spans) > 0 {
+			fb.Blit(r.Frame(), spans, o.Scale, padX, padY)
 		}
-		copy(last.Pix, frame.Pix)
+	}
+	redrawAll := func() {
+		r, c = NewRenderer(), nil
+		fb.Clear(rgb(ui.Themes[theme].BG))
+		draw()
 	}
 
 	sample := time.NewTicker(o.Interval)
@@ -126,9 +138,7 @@ func Run(o Options) error {
 				return nil
 			case 't', 'T':
 				theme = (theme + 1) % len(ui.Themes)
-				fb.Clear(rgb(ui.Themes[theme].BG))
-				last = nil
-				draw()
+				redrawAll()
 			}
 		case s := <-sigs:
 			switch s {
@@ -141,12 +151,17 @@ func Run(o Options) error {
 				if err := con.Acquire(); err != nil {
 					return fmt.Errorf("acquire VT: %w", err)
 				}
-				active, last = true, nil
-				fb.Clear(rgb(ui.Themes[theme].BG))
-				draw()
+				active = true
+				redrawAll()
 			default:
 				return nil
 			}
 		}
 	}
+}
+
+type canvasCache struct {
+	canvas *canvas.Canvas
+	sec    int64
+	theme  int
 }

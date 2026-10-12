@@ -50,4 +50,4 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - `TestRenderAnySize` must stay green: every panel draws into any box and clips
 - Check visuals with `-once` at 215x45 (desk), 120x40, 80x60, and `-gfx -once 3440x1440 > f.png`, before calling a UI change done
 - Every rune a panel draws needs a glyph or shape in `gfx` (`TestEveryDashboardRuneSupported`)
-- Keep an animated graphics frame cheap: `go test -bench AnimatedFrameBlit ./internal/gfx` (~3 ms, ~17 rows/frame)
+- Keep graphics frames cheap: `go test -bench "AnimatedFrameBlit|TweenFrame" ./internal/gfx` (idle ~0.1 ms, tween ~0.4 ms). The base layer (backdrop + windows) is cached; tiles redraw only when their cell changes; blits copy changed spans only

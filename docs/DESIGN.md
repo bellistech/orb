@@ -72,7 +72,10 @@ are 4x2 pixels and join into solid area graphs.
 
 Animation (default 15 fps): values ease out over 600 ms after each sample,
 a light sweeps each title every 7 s (staggered), stars twinkle in the gaps.
-Only logical rows that changed are copied to the framebuffer.
+The backdrop and windows are a cached base layer; a tile is restored and
+redrawn only when its cell or shimmer changed, stars twinkle in 6 steps, and
+only changed spans are copied to the framebuffer. Layout reruns only during a
+tween or when the clock second ticks. Idle frames cost ~0.1 ms at any scale.
 
 ## Themes
 

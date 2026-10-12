@@ -63,7 +63,7 @@ func TestBlitScalesAndSkipsUnchangedRows(t *testing.T) {
 	f := NewFrame(2, 2)
 	f.Pix = []uint32{0x112233, 0x445566, 0x778899, 0xAABBCC}
 	if n := fb.Blit(f, nil, 2, 1, 1); n != 2 {
-		t.Fatalf("wrote %d rows, want 2", n)
+		t.Fatalf("wrote %d spans, want 2", n)
 	}
 	px := func(x, y int) uint32 {
 		o := y*fb.stride + x*4
@@ -79,11 +79,20 @@ func TestBlitScalesAndSkipsUnchangedRows(t *testing.T) {
 			t.Errorf("pixel %d,%d = %#06x, want %#06x", c.x, c.y, got, c.want)
 		}
 	}
-	prev := *f
-	prev.Pix = append([]uint32(nil), f.Pix...)
+	// A span writes only its own columns.
 	f.Pix[3] = 0
-	if n := fb.Blit(f, &prev, 2, 1, 1); n != 1 {
-		t.Fatalf("second blit wrote %d rows, want 1", n)
+	if n := fb.Blit(f, []Span{{Y: 1, X0: 1, X1: 2}}, 2, 1, 1); n != 1 {
+		t.Fatalf("span blit wrote %d, want 1", n)
+	}
+	if got := px(3, 3); got != 0 {
+		t.Errorf("span pixel = %#06x, want 0", got)
+	}
+	if got := px(1, 3); got != 0x778899 {
+		t.Errorf("pixel outside span changed: %#06x", got)
+	}
+	// Hostile spans are ignored.
+	if n := fb.Blit(f, []Span{{Y: -1, X0: 0, X1: 1}, {Y: 0, X0: 1, X1: 9}, {Y: 5}}, 2, 1, 1); n != 0 {
+		t.Fatalf("bad spans wrote %d", n)
 	}
 	// Out-of-bounds placement is refused rather than written.
 	if n := fb.Blit(f, nil, 4, 1, 1); n != 0 {
