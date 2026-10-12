@@ -25,13 +25,14 @@ func frameTick() tea.Cmd {
 }
 
 // Model is the Bubble Tea model. It only displays; the keys are d and w
-// (pages), t (next theme) and q (quit).
+// (pages), space (pause the news reader), t (next theme) and q (quit).
 type Model struct {
 	source   func() *sys.Snapshot
 	interval time.Duration
 	theme    int
 	page     ui.Page
 	feeds    func() feeds.View
+	reader   *ui.ReaderClock // pointer: the clock outlives Model copies
 	snap     *sys.Snapshot
 	w, h     int
 }
@@ -43,7 +44,7 @@ func New(interval time.Duration, theme string, page ui.Page, demo bool, feedView
 	if feedView == nil {
 		feedView = func() feeds.View { return feeds.View{} }
 	}
-	m := Model{interval: interval, page: page, feeds: feedView}
+	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}}
 	if demo {
 		m.source = func() *sys.Snapshot { return sys.Demo(time.Now()) }
 	} else {
@@ -94,6 +95,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.theme = (m.theme + 1) % len(ui.Themes)
 		case "d":
 			m.page = ui.Dash
+		case "space", " ":
+			m.reader.Toggle(time.Now())
 		case "w":
 			if m.page != ui.News {
 				m.page = ui.News
@@ -108,6 +111,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	t := ui.Themes[m.theme]
 	view := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: time.Now()}
+	m.reader.Apply(&view)
 	v := tea.NewView(ui.Render(m.w, m.h, view, t, false).String())
 	v.AltScreen = true
 	v.WindowTitle = "nocterm"

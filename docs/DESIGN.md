@@ -66,7 +66,9 @@ characters after stripping HTML and boilerplate). The headline shows for
 1.5 s, then the body types at 40 characters/s into
 lines of at most 72 characters; each typed page holds 5 s, with a blinking
 ▼ when another follows. The schedule is a pure function of time since the
-news was fetched, so every frame is computable without state. The headline
+news was fetched, so every frame is computable without state. Space pauses
+it (`ui.ReaderClock`): the clock freezes and the reader keeps the news it
+was showing, so a refresh can't swap the story mid-read. The headline
 windows show one line per headline, pages rotating every 15 s with
 staggered starts. The page lays out every frame while typing; tile diffing
 keeps a frame at ~0.15 ms. Feeds come from bellis.tech's JSON caches,

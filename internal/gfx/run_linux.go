@@ -82,6 +82,7 @@ func Run(o Options) error {
 		feedView = func() feeds.View { return feeds.View{} }
 	}
 	start := time.Now()
+	var reader ui.ReaderClock
 	cur := o.Source()
 	prev, sampled := cur, start
 	r := NewRenderer()
@@ -106,6 +107,7 @@ func Run(o Options) error {
 		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != theme || c.page != page || c.feeds != fv.Version {
 			snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
 			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now}
+			reader.Apply(&v)
 			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), theme, page, fv.Version}
 		}
 		a := Anim{}
@@ -155,6 +157,9 @@ func Run(o Options) error {
 				draw()
 			case 'w', 'W':
 				page = ui.News
+				draw()
+			case ' ':
+				reader.Toggle(time.Now())
 				draw()
 			}
 		case s := <-sigs:
