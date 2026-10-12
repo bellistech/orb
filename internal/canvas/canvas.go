@@ -5,6 +5,7 @@ package canvas
 import (
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Color is a 24-bit color. The zero value means "unset" (terminal default).
@@ -110,17 +111,28 @@ func (r Region) at(x, y int) *Cell {
 	return &r.c.cells[(r.Y+y)*r.c.W+r.X+x]
 }
 
+// safe replaces control and invisible formatting runes (ESC, BEL, C1
+// controls, bidi overrides) with '?'. Every rune enters the canvas through
+// here, so text from process names, interfaces or feeds can never become a
+// terminal control sequence.
+func safe(ch rune) rune {
+	if unicode.IsControl(ch) || unicode.Is(unicode.Cf, ch) {
+		return '?'
+	}
+	return ch
+}
+
 // Set draws ch with fg at (x, y), keeping the existing background.
 func (r Region) Set(x, y int, ch rune, fg Color) {
 	if cell := r.at(x, y); cell != nil {
-		cell.Ch, cell.FG, cell.Bold, cell.Quad = ch, fg, false, 0
+		cell.Ch, cell.FG, cell.Bold, cell.Quad = safe(ch), fg, false, 0
 	}
 }
 
 // SetBold is Set with bold.
 func (r Region) SetBold(x, y int, ch rune, fg Color) {
 	if cell := r.at(x, y); cell != nil {
-		cell.Ch, cell.FG, cell.Bold, cell.Quad = ch, fg, true, 0
+		cell.Ch, cell.FG, cell.Bold, cell.Quad = safe(ch), fg, true, 0
 	}
 }
 
@@ -128,6 +140,7 @@ func (r Region) SetBold(x, y int, ch rune, fg Color) {
 // returns the column after it. Meant for square (graphics) canvases.
 func (r Region) Double(x, y int, s string, fg Color, bold bool) int {
 	for _, ch := range s {
+		ch = safe(ch)
 		for q := range uint8(4) {
 			if cell := r.at(x+int(q%2), y+int(q/2)); cell != nil {
 				cell.Ch, cell.FG, cell.Bold, cell.Quad = ch, fg, bold, q+1
