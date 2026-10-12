@@ -61,3 +61,26 @@ func TestDouble(t *testing.T) {
 		t.Fatal("Set kept Quad")
 	}
 }
+
+// Process names, interface names and feed text reach the canvas; none may
+// smuggle terminal control sequences or invisible bidi overrides through.
+func TestControlRunesNeutralized(t *testing.T) {
+	c := New(12, 1, Color{})
+	r := c.Full()
+	r.Text(0, 0, "a\x1b[2J\x07\u202e\u009b", RGB(1, 1, 1)) // ESC, BEL, RLO, CSI (C1)
+	r.Double(8, 0, "\x1b", RGB(1, 1, 1), false)
+	r.Set(10, 0, '\n', RGB(1, 1, 1))
+	if got := c.Plain(); got != "a?[2J???? ? " {
+		t.Fatalf("plain = %q", got)
+	}
+	// The only escapes in the output are the canvas's own SGR sequences.
+	out := c.String()
+	for i := 0; i < len(out); i++ {
+		if out[i] == 0x1b && (i+1 >= len(out) || out[i+1] != '[') {
+			t.Fatalf("stray ESC at %d in %q", i, out)
+		}
+	}
+	if strings.Contains(strings.ReplaceAll(out, "\x1b[", ""), "\x1b") {
+		t.Fatalf("raw ESC in %q", out)
+	}
+}
