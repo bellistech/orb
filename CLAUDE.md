@@ -35,7 +35,7 @@ make demo           # run with synthetic data (both pages)
 - `internal/feeds/` — news + weather JSON: fetch (UA `orb/<version>`, https only, 8 MiB cap, redirects re-checked), parse + validate, `Clean` (HTML unescape, transliterate, printable ASCII only, emoji dropped; fuzzed), `Poll` with backoff, `Store` (RWMutex snapshot + version), `Brief` (screen-safe errors, never the URL), `Demo`
 - `internal/config/` — `~/.config/orb/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override
 - `internal/tui/` — Bubble Tea v2 program: ticks the sampler, renders, handles resize and keys
-- `internal/gfx/` — graphics mode: hand-drawn 5x7 font in 8x8 tiles, procedural blocks/braille, RPG-style windows (from `canvas.Windows`), animation (tween via `sys.Lerp`, title shimmer, stars), fbdev driver with validated geometry and dirty-row blits, VT control (KD_GRAPHICS, VT_PROCESS switching, raw keys, restore on every exit), PNG output
+- `internal/gfx/` — graphics mode: hand-drawn 5x7 font in 8x8 tiles (2x via `Cell.Quad`), procedural blocks/braille, RPG-style windows (from `canvas.Windows`), overlays (orb from `canvas.Orbs`, sparkles), animation (tween via `sys.Lerp`, title shimmer, stars), `ParseKeys`, fbdev driver with validated geometry and dirty-row blits, VT control (KD_GRAPHICS, VT_PROCESS switching, raw keys, restore on every exit), PNG output
 
 Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it into terminal output, `gfx` into pixels (ADR-0001). Panels never know which.
 
@@ -57,4 +57,6 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - `TestRenderAnySize` must stay green: every panel draws into any box and clips
 - Check visuals with `-once` at 215x45 (desk), 120x40, 80x60, and `-gfx -once 3440x1440 > f.png`, before calling a UI change done
 - Every rune a panel draws needs a glyph or shape in `gfx` (`TestEveryDashboardRuneSupported`)
+- The incremental renderer must equal a full render after any frame sequence (`TestIncrementalMatchesFullRender`); provoke it red when touching tile diffing or overlays
+- Run test pipelines with `set -o pipefail`: `go test | grep` hides failures otherwise
 - Keep graphics frames cheap: `go test -bench "AnimatedFrameBlit|TweenFrame|NewsFrame" ./internal/gfx` (idle ~0.1 ms, tween ~0.4 ms, news ~0.15 ms). The base layer (backdrop + windows) is cached; tiles redraw only when their cell changes; blits copy changed spans only

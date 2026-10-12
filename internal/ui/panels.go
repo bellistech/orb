@@ -26,13 +26,25 @@ func drawHeader(r canvas.Region, v *View, t *Theme) {
 	if in.Empty() {
 		return
 	}
-	drawTabs(r, v.Page, t)
+	// The emblem sits at the left. Graphics mode draws it as pixels over
+	// the full header height; terminals get a small block-art version.
+	ow := 0
+	if in.W >= 70 && in.H >= 3 {
+		ow = orbCells(in.Square())
+		if in.Square() {
+			r.Sub(2, 0, ow, r.H).AddOrb(t.Host)
+		} else {
+			drawOrbCells(in, 0, 0, v.Now, t)
+		}
+		ow++
+	}
+	drawTabs(r, v.Page, t, 2+ow)
 	now := v.Now
 	clock := now.Format("15:04")
 	cw := BigWidth(clock, in.Square())
-	x := 0
-	if in.W >= cw+40 && in.H >= 3 {
-		x = Big(in, 0, 0, clock, func(c int) canvas.Color { return t.Heat(float64(c) / float64(cw) * 0.5) })
+	x := ow
+	if in.W >= cw+40+ow && in.H >= 3 {
+		x = Big(in, x, 0, clock, func(c int) canvas.Color { return t.Heat(float64(c) / float64(cw) * 0.5) })
 		x = in.Text(x+1, 2, now.Format(":05"), t.Dim) + 3
 	}
 
@@ -499,9 +511,9 @@ func Uptime(d time.Duration) string {
 
 // drawTabs writes the page keys into the header's top border, the active
 // page lit.
-func drawTabs(r canvas.Region, p Page, t *Theme) {
+func drawTabs(r canvas.Region, p Page, t *Theme, x0 int) {
 	edge := Mix(t.Host, t.BG, 0.55)
-	x := r.Text(2, 0, " ", edge)
+	x := r.Text(x0, 0, " ", edge)
 	for i, tab := range []struct {
 		key, name string
 		page      Page

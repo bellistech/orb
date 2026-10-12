@@ -66,6 +66,15 @@ var Themes = []*Theme{
 		Net: h("#7dffb0"), Disk: h("#ffc04d"), Temp: h("#ff6b6b"), Proc: h("#8fc8ff"),
 		WinTop: h("#3b4fc4"), WinBottom: h("#0b1150"), Edge: h("#eef0ff"),
 	}, "#5ce1ff", "#7dffb0", "#ffe066", "#ff9a3d", "#ff4d6d"),
+	newTheme(Theme{
+		Name: "arcane",
+		BG:   h("#07041a"), Panel: h("#0e0a26"), Track: h("#1d1640"),
+		FG: h("#efe9ff"), Dim: h("#a99fd6"), Faint: h("#4f467a"),
+		RX: h("#6ff7e8"), TX: h("#ff7ad9"),
+		Host: h("#c79bff"), CPU: h("#6fe3ff"), Mem: h("#ff7ad9"), GPU: h("#b68cff"),
+		Net: h("#6ff7c4"), Disk: h("#ffd27a"), Temp: h("#ff6f91"), Proc: h("#8fb4ff"),
+		WinTop: h("#2a1d6e"), WinBottom: h("#0a0724"), Edge: h("#e6dcff"),
+	}, "#5b6cff", "#9b5bff", "#ff5bd6", "#ff9e5b", "#ffe45b"),
 }
 
 // ThemeByName returns the named theme, or nil.

@@ -67,6 +67,8 @@ type Renderer struct {
 	glow        []float64
 	stars       []star
 	dirty       []Span // per row, X0 >= X1 means clean
+	prevOver    []rect // overlay rects drawn last frame
+	orbPal      *orbPalette
 }
 
 type star struct {
@@ -92,11 +94,38 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 		r.dirty[i] = Span{Y: i, X0: r.frame.W, X1: 0}
 	}
 
+	// Tiles under last frame's or this frame's overlays are redrawn so
+	// overlays can move and fade without trails.
+	ovs := r.overlays(c, t, a)
+	forced := map[int]bool{}
+	force := func(rc rect) {
+		rc = rc.clip(r.frame.W, r.frame.H)
+		if rc.empty() {
+			return
+		}
+		for ty := rc.y0 / Tile; ty <= (rc.y1-1)/Tile; ty++ {
+			for tx := rc.x0 / Tile; tx <= (rc.x1-1)/Tile; tx++ {
+				forced[ty*c.W+tx] = true
+			}
+		}
+	}
+	for _, rc := range r.prevOver {
+		force(rc)
+	}
+	for _, o := range ovs {
+		force(o.r)
+	}
+
 	tops := make(map[int]int, len(c.Windows)*16)
 	for i, w := range c.Windows {
 		for x := w.X + 1; x < w.X+w.W-1; x++ {
 			tops[w.Y*c.W+x] = i
 		}
+	}
+	full := r.cells == nil
+	if full {
+		r.cells = make([]canvas.Cell, c.W*c.H)
+		r.glow = make([]float64, c.W*c.H)
 	}
 	for y := range c.H {
 		for x := range c.W {
@@ -104,7 +133,7 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 			cell := c.CellAt(x, y)
 			wi, onTop := tops[i]
 			glow := shimmer(c, wi, onTop, x, a)
-			if r.cells != nil && cell == r.cells[i] && glow == r.glow[i] {
+			if !full && cell == r.cells[i] && glow == r.glow[i] && !forced[i] {
 				continue
 			}
 			r.restoreTile(x, y)
@@ -115,22 +144,21 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 			}
 			drawCell(r.frame, x, y, cell, t, glow)
 			r.mark(x*Tile, y*Tile, Tile, Tile)
-			if r.cells == nil {
-				continue
-			}
+			// Record what this tile now shows, including on the first
+			// frame, so the next comparison is against the truth.
 			r.cells[i], r.glow[i] = cell, glow
 		}
 	}
-	if r.cells == nil {
-		r.cells = make([]canvas.Cell, c.W*c.H)
-		r.glow = make([]float64, c.W*c.H)
-		for y := range c.H {
-			for x := range c.W {
-				r.cells[y*c.W+x] = c.CellAt(x, y)
-			}
+	r.drawStars(t, a)
+	r.prevOver = r.prevOver[:0]
+	for _, o := range ovs {
+		o.draw(r.frame)
+		rc := o.r.clip(r.frame.W, r.frame.H)
+		if !rc.empty() {
+			r.mark(rc.x0, rc.y0, rc.x1-rc.x0, rc.y1-rc.y0)
+			r.prevOver = append(r.prevOver, rc)
 		}
 	}
-	r.drawStars(t, a)
 
 	out := r.dirty[:0:0]
 	for _, d := range r.dirty {
@@ -172,7 +200,7 @@ func (r *Renderer) rebuild(c *canvas.Canvas, t *ui.Theme, key string) {
 			}
 		}
 	}
-	r.cells, r.glow = nil, nil
+	r.cells, r.glow, r.prevOver = nil, nil, nil
 	r.dirty = make([]Span, h)
 	for i := range r.dirty {
 		r.dirty[i] = Span{Y: i, X0: 0, X1: w}

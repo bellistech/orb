@@ -111,6 +111,23 @@ Console keys arrive raw; `gfx.ParseKeys` consumes whole escape sequences
 so an arrow (ESC [ A) is never read as ESC or a letter. ESC does not quit;
 q and Ctrl+C do.
 
+The orb: a glass sphere at the left of the header, drawn as pixels over
+the header's full height. Its mist swirls through a few quantized bands
+(palette cycling, `ui.OrbMist`) from deep accent through the accent to the
+hot end of the theme ramp, with a glowing core, darker limb, highlight, rim
+and a pulsing halo blended over the frame behind it. Terminals get a 6x6
+block-art version.
+
+Overlays (`gfx/overlay.go`) are pixel effects that ignore the tile grid:
+the orb, and sparkles, four-pointed glints that bloom and fade on window
+bevels on staggered periods. Tiles under an overlay this frame or last are
+restored and redrawn before overlays are painted, so nothing leaves trails.
+`TestIncrementalMatchesFullRender` holds the renderer to that: after any
+sequence of frames, the incremental frame equals a fresh full render.
+
+In the reader, letters glow as they are typed and cool to the text color
+over 0.35 s.
+
 Animation (default 15 fps): values ease out over 600 ms after each sample,
 a light sweeps each title every 7 s (staggered), stars twinkle in the gaps.
 The backdrop and windows are a cached base layer; a tile is restored and
@@ -121,7 +138,7 @@ tween or when the clock second ticks. Idle frames cost ~0.1 ms at any scale.
 ## Themes
 
 `phosphor` (default, amber CRT), `gizzard` (psychedelic), `lantern` (soft
-pastel), `chrono` (blue RPG windows). Each theme is a background, text tones,
+pastel), `chrono` (blue RPG windows), `arcane` (violet, mystical). Each theme is a background, text tones,
 a value ramp, one accent per panel, and optionally explicit window colors.
 
 CPU also gets a per-core heatmap: one strip per core over time, two cores per
