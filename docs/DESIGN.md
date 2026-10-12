@@ -107,6 +107,13 @@ vertical gradient fill, title cut into the border as a tab. Blocks, braille
 and lines are drawn from geometry so they tile without seams; braille dots
 are 4x2 pixels and join into solid area graphs.
 
+Console ownership: orb draws on the controlling terminal when it is a VT.
+Otherwise (a pseudo-terminal: sudo-rs always allocates one, as do tmux and
+SSH) root can take a free VT: VT_OPENQRY on tty0, VT_ACTIVATE + bounded
+VT_WAITACTIVE, and on exit the display goes back to the VT that was
+active. Signals are off on the console (ISIG cleared): Ctrl+C arrives as a
+key and quits, Ctrl+Z cannot suspend orb with the screen in graphics.
+
 Console keys arrive raw; `gfx.ParseKeys` consumes whole escape sequences
 so an arrow (ESC [ A) is never read as ESC or a letter. ESC does not quit;
 q and Ctrl+C do.

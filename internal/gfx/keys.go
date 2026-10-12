@@ -16,6 +16,7 @@ const (
 	KeyRight
 	KeyLeft
 	KeyEsc
+	KeyInterrupt // Ctrl+C: the console is raw, so it arrives as a byte
 )
 
 // ParseKeys decodes raw console input. Arrow keys arrive as escape
@@ -28,7 +29,10 @@ func ParseKeys(b []byte) []Key {
 	for i := 0; i < len(b); i++ {
 		c := b[i]
 		if c != 0x1b {
-			if c >= 0x20 && c <= 0x7e {
+			switch {
+			case c == 0x03:
+				out = append(out, Key{Code: KeyInterrupt})
+			case c >= 0x20 && c <= 0x7e:
 				out = append(out, Key{Rune: c})
 			}
 			continue

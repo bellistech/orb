@@ -5,8 +5,9 @@ INSTALL_DIR := /usr/local/bin
 
 .PHONY: build install uninstall test lint fmt demo clean
 
+# CGO off: a fully static binary, no libc, runs on any Linux box as is.
 build:
-	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/$(BINARY)/
+	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/$(BINARY)/
 
 install: build
 	install -m 755 $(BINARY) $(INSTALL_DIR)/$(BINARY)

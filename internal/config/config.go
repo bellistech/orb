@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,9 +32,20 @@ type Config struct {
 
 const maxSize = 64 << 10
 
-// DefaultPath is $XDG_CONFIG_HOME/orb/config or ~/.config/orb/config.
+// DefaultPath is $XDG_CONFIG_HOME/orb/config or ~/.config/orb/config. Under
+// sudo it is the invoking user's file, since root has none of its own and
+// sudo resets HOME.
 func DefaultPath() string {
-	dir, err := os.UserConfigDir()
+	return defaultPath(os.Geteuid(), os.Getenv("SUDO_USER"), user.Lookup, os.UserConfigDir)
+}
+
+func defaultPath(euid int, sudoUser string, lookup func(string) (*user.User, error), configDir func() (string, error)) string {
+	if euid == 0 && sudoUser != "" && sudoUser != "root" {
+		if u, err := lookup(sudoUser); err == nil && filepath.IsAbs(u.HomeDir) {
+			return filepath.Join(u.HomeDir, ".config", "orb", "config")
+		}
+	}
+	dir, err := configDir()
 	if err != nil {
 		return ""
 	}

@@ -50,13 +50,20 @@ orb -gfx -scale 4       # pixel size, 1..8 (4 = 107x45 tiles on 3440x1440)
 orb -gfx -fps 0         # no animation, redraw once per sample
 ```
 
-Needs membership in the `video` group and must start from the monitor's own
-VT, not SSH. Ctrl+Alt+F-key switches work; orb pauses while away.
+Start it from the monitor's own console login (needs the `video` group),
+or as root from anywhere, including SSH: `sudo orb -gfx` takes a free
+console, switches the monitor to it, and switches back when you quit.
+Ctrl+Alt+F-key switches work; orb pauses while away. `q` or Ctrl+C quits.
+
+Run as root to see every process on the network page. Under sudo, orb reads
+the invoking user's `~/.config/orb/config`. As root, feed fetching and
+parsing run as root too.
+
 If a killed process leaves the console blank:
 
 ```bash
 orb -reset-console -              # typed blind on that console
-sudo orb -reset-console /dev/tty1 # or from SSH
+sudo orb -reset-console /dev/tty1 # or from SSH; then sudo chvt 1
 ```
 
 ## Install
@@ -66,7 +73,7 @@ git clone <repo> && cd orb
 make build && sudo make install
 ```
 
-Requires: Linux, Go 1.27+ to build. Truecolor terminal recommended; on the bare Linux console use `-gfx`.
+Requires: Linux, Go 1.27+ to build. The binary is static (no libc). Truecolor terminal recommended; on the bare Linux console use `-gfx`.
 
 ## Panels
 
