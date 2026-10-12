@@ -123,3 +123,49 @@ func TestReaderClock(t *testing.T) {
 		t.Fatalf("new news: %+v", v.Reader)
 	}
 }
+
+func TestReaderClockSkip(t *testing.T) {
+	t0 := time.Unix(1_800_000_000, 0)
+	n := &feeds.News{Generated: t0, Categories: []feeds.Category{{Name: "A", Items: []feeds.Item{
+		{Title: "a", Summary: strings.Repeat("word ", 30)},
+		{Title: "b", Summary: strings.Repeat("word ", 30)},
+		{Title: "c", Summary: strings.Repeat("word ", 30)},
+	}}}}
+	plans, _ := cachedPlan(n, 40, 5) // the plan the last frame used
+	var c ReaderClock
+	at := func(now time.Time) int {
+		v := View{Now: now, Feeds: feeds.View{News: n, NewsAt: t0}}
+		c.Apply(&v)
+		readerCache.Lock()
+		total := readerCache.total
+		readerCache.Unlock()
+		return locate(plans, total, v.Reader.Elapsed).plan
+	}
+	now := t0.Add(time.Second)
+	first := at(now)
+	c.Skip(1, now)
+	if got := at(now); got != (first+1)%3 {
+		t.Fatalf("next: story %d, want %d", got, (first+1)%3)
+	}
+	// Landing on a story starts it from its headline.
+	v := View{Now: now, Feeds: feeds.View{News: n, NewsAt: t0}}
+	c.Apply(&v)
+	if pos := locate(plans, readerCache.total, v.Reader.Elapsed); pos.page != 0 || pos.shown != 0 {
+		t.Fatalf("not at story start: %+v", pos)
+	}
+	c.Skip(-1, now)
+	c.Skip(-1, now)
+	if got := at(now); got != (first+2)%3 {
+		t.Fatalf("back twice: story %d, want %d", got, (first+2)%3)
+	}
+	// Skipping while paused resumes.
+	c.Toggle(now)
+	c.Skip(1, now)
+	if c.Paused() {
+		t.Fatal("skip did not resume")
+	}
+	// Time keeps moving forward from the new spot.
+	if at(now.Add(time.Second)) != at(now) {
+		t.Fatal("one second later should still be the same story")
+	}
+}

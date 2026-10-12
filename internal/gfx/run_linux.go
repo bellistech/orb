@@ -58,18 +58,18 @@ func Run(o Options) error {
 	}
 	defer con.Restore()
 
-	keys := make(chan byte, 16)
+	keys := make(chan Key, 16)
 	go func() {
-		buf := make([]byte, 16)
+		buf := make([]byte, 64)
 		for {
 			n, err := con.Read(buf)
 			if err != nil {
 				close(keys)
 				return
 			}
-			for _, b := range buf[:n] {
+			for _, k := range ParseKeys(buf[:n]) {
 				select {
-				case keys <- b:
+				case keys <- k:
 				default: // drop keys nobody is reading
 				}
 			}
@@ -142,23 +142,29 @@ func Run(o Options) error {
 			}
 		case <-tick:
 			draw()
-		case b, ok := <-keys:
+		case k, ok := <-keys:
 			if !ok {
 				return errors.New("keyboard closed")
 			}
-			switch b {
-			case 'q', 'Q', 0x1b:
+			switch {
+			case k.Code == KeyUp || k.Code == KeyLeft:
+				reader.Skip(-1, time.Now())
+				draw()
+			case k.Code == KeyDown || k.Code == KeyRight:
+				reader.Skip(1, time.Now())
+				draw()
+			case k.Rune == 'q' || k.Rune == 'Q':
 				return nil
-			case 't', 'T':
+			case k.Rune == 't' || k.Rune == 'T':
 				theme = (theme + 1) % len(ui.Themes)
 				redrawAll()
-			case 'd', 'D':
+			case k.Rune == 'd' || k.Rune == 'D':
 				page = ui.Dash
 				draw()
-			case 'w', 'W':
+			case k.Rune == 'w' || k.Rune == 'W':
 				page = ui.News
 				draw()
-			case ' ':
+			case k.Rune == ' ':
 				reader.Toggle(time.Now())
 				draw()
 			}

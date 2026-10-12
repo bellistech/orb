@@ -25,7 +25,8 @@ func frameTick() tea.Cmd {
 }
 
 // Model is the Bubble Tea model. It only displays; the keys are d and w
-// (pages), space (pause the news reader), t (next theme) and q (quit).
+// (pages), space (pause the news reader), arrows (previous/next story),
+// t (next theme) and q (quit).
 type Model struct {
 	source   func() *sys.Snapshot
 	interval time.Duration
@@ -89,8 +90,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.w, m.h = msg.Width, msg.Height
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "q", "ctrl+c", "esc":
+		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "up", "left":
+			m.reader.Skip(-1, time.Now())
+		case "down", "right":
+			m.reader.Skip(1, time.Now())
 		case "t":
 			m.theme = (m.theme + 1) % len(ui.Themes)
 		case "d":

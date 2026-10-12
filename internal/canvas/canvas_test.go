@@ -42,3 +42,22 @@ func TestHex(t *testing.T) {
 		}
 	}
 }
+
+func TestDouble(t *testing.T) {
+	c := New(5, 2, Color{})
+	if x := c.Full().Double(0, 0, "ab", RGB(1, 1, 1), true); x != 4 {
+		t.Fatalf("end column %d", x)
+	}
+	if c.CellAt(1, 1).Quad != 4 || c.CellAt(2, 0).Ch != 'b' || c.CellAt(2, 0).Quad != 1 {
+		t.Fatalf("cells %+v %+v", c.CellAt(1, 1), c.CellAt(2, 0))
+	}
+	// Terminals see the rune once, in the top-left cell.
+	if got := c.Plain(); got != "a b  \n     " {
+		t.Fatalf("plain = %q", got)
+	}
+	// Plain writes clear the quadrant marker.
+	c.Full().Set(0, 0, 'x', RGB(1, 1, 1))
+	if c.CellAt(0, 0).Quad != 0 {
+		t.Fatal("Set kept Quad")
+	}
+}

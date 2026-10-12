@@ -68,7 +68,11 @@ lines of at most 72 characters; each typed page holds 5 s, with a blinking
 ▼ when another follows. The schedule is a pure function of time since the
 news was fetched, so every frame is computable without state. Space pauses
 it (`ui.ReaderClock`): the clock freezes and the reader keeps the news it
-was showing, so a refresh can't swap the story mid-read. The headline
+was showing, so a refresh can't swap the story mid-read. Arrows move a
+story back (up/left) or on (down/right) from its headline, resuming if
+paused. In graphics mode the reader's text is double size: each glyph spans
+2x2 tiles (`canvas.Cell.Quad`) and every tile draws its own quarter, so tile
+diffing still works. The headline
 windows show one line per headline, pages rotating every 15 s with
 staggered starts. The page lays out every frame while typing; tile diffing
 keeps a frame at ~0.15 ms. Feeds are JSON caches,
@@ -92,6 +96,10 @@ double strike. Panels become RPG-menu windows: dark outline, top-lit bevel,
 vertical gradient fill, title cut into the border as a tab. Blocks, braille
 and lines are drawn from geometry so they tile without seams; braille dots
 are 4x2 pixels and join into solid area graphs.
+
+Console keys arrive raw; `gfx.ParseKeys` consumes whole escape sequences
+so an arrow (ESC [ A) is never read as ESC or a letter. ESC does not quit;
+q and Ctrl+C do.
 
 Animation (default 15 fps): values ease out over 600 ms after each sample,
 a light sweeps each title every 7 s (staggered), stars twinkle in the gaps.

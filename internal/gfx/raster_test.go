@@ -108,3 +108,20 @@ func BenchmarkFrame(b *testing.B) {
 		Rasterize(f, ui.Render(107, 45, ui.View{Snap: snap}, th, true), th, Anim{T: float64(i) / 15})
 	}
 }
+
+func TestQuarterScalesGlyph(t *testing.T) {
+	g := font['A']
+	for y := range 2 * Tile {
+		for x := range 2 * Tile {
+			q := uint8(1 + x/Tile + 2*(y/Tile))
+			big := quarter(g, q)[y%Tile]&(0x80>>(x%Tile)) != 0
+			small := g[y/2]&(0x80>>(x/2)) != 0
+			if big != small {
+				t.Fatalf("pixel %d,%d: quarter=%v source=%v", x, y, big, small)
+			}
+		}
+	}
+	if quarter(g, 0) != (glyph{}) || quarter(g, 5) != (glyph{}) {
+		t.Fatal("bad quadrant should be empty")
+	}
+}
