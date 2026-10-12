@@ -96,16 +96,24 @@ func parseHexAddrPort(s string) (netip.AddrPort, bool) {
 	return netip.AddrPortFrom(addr.Unmap(), uint16(port)), true
 }
 
-type owner struct {
+// Owner is the process holding a socket.
+type Owner struct {
 	PID  int
 	Proc string
 }
 
+// OwnerFunc maps socket inodes to their owners.
+type OwnerFunc func() map[uint64]Owner
+
+// LocalOwners scans /proc directly: every process when privileged, only
+// our own otherwise.
+func LocalOwners() map[uint64]Owner { return socketOwners("/proc", MaxFDScan) }
+
 // socketOwners maps socket inodes to the processes holding them by reading
-// the fd symlinks under procRoot. Only processes we may inspect are found
-// (all of them as root, our own otherwise). maxFDs bounds the work.
-func socketOwners(procRoot string, maxFDs int) map[uint64]owner {
-	out := map[uint64]owner{}
+// the fd symlinks under procRoot. Only processes we may inspect are found.
+// maxFDs bounds the work.
+func socketOwners(procRoot string, maxFDs int) map[uint64]Owner {
+	out := map[uint64]Owner{}
 	ents, err := os.ReadDir(procRoot)
 	if err != nil {
 		return out
@@ -139,26 +147,30 @@ func socketOwners(procRoot string, maxFDs int) map[uint64]owner {
 				comm = readString(filepath.Join(dir, "comm"))
 			}
 			if _, dup := out[inode]; !dup {
-				out[inode] = owner{PID: pid, Proc: comm}
+				out[inode] = Owner{PID: pid, Proc: comm}
 			}
 		}
 	}
 	return out
 }
 
-// maxFDScan bounds the per-read fd walk; a busy box has a few thousand.
-const maxFDScan = 200000
+// MaxFDScan bounds the per-read fd walk; a busy box has a few thousand.
+const MaxFDScan = 200000
 
-// ReadSockets reads every TCP and UDP socket and, where visible, its
-// owning process. Listeners first by port, then the rest.
-func ReadSockets() []Socket {
+// ReadSockets reads every TCP and UDP socket and, where owners can see it,
+// its owning process. Listeners first by port, then the rest. A nil owners
+// means LocalOwners.
+func ReadSockets(owners OwnerFunc) []Socket {
 	var all []Socket
 	for _, proto := range []string{"tcp", "tcp6", "udp", "udp6"} {
 		all = append(all, parseProcNet(readString("/proc/net/"+proto), proto)...)
 	}
-	owners := socketOwners("/proc", maxFDScan)
+	if owners == nil {
+		owners = LocalOwners
+	}
+	om := owners()
 	for i := range all {
-		if o, ok := owners[all[i].Inode]; ok && all[i].Inode != 0 {
+		if o, ok := om[all[i].Inode]; ok && all[i].Inode != 0 {
 			all[i].PID, all[i].Proc = o.PID, o.Proc
 		}
 	}

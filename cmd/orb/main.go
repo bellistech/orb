@@ -15,6 +15,7 @@ import (
 	"orb/internal/config"
 	"orb/internal/feeds"
 	"orb/internal/gfx"
+	"orb/internal/priv"
 	"orb/internal/sys"
 	"orb/internal/tui"
 	"orb/internal/ui"
@@ -23,6 +24,16 @@ import (
 var version = "dev"
 
 func main() {
+	// The privileged socket-owner helper is this binary re-executed by a
+	// root orb; it must not parse flags, read config or touch anything else.
+	if len(os.Args) == 2 && os.Args[1] == priv.HelperFlag {
+		if err := priv.RunHelper(os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "orb socket helper:", err)
+			os.Exit(3)
+		}
+		return
+	}
+
 	themeNames := make([]string, len(ui.Themes))
 	for i, t := range ui.Themes {
 		themeNames[i] = t.Name
@@ -125,6 +136,7 @@ func main() {
 	sampler := sys.NewSampler()
 	src, wantSockets := sampler.Sample, sampler.WantSockets.Store
 	feedView := func() feeds.View { return feeds.View{} }
+	startFeeds := func() {}
 	if *demo {
 		wantSockets = func(bool) {}
 		src = func() *sys.Snapshot { return sys.Demo(time.Now()) }
@@ -132,8 +144,41 @@ func main() {
 		feedView = func() feeds.View { return dv }
 	} else if *newsURL != "" || *weatherURL != "" {
 		store := &feeds.Store{}
-		store.Start(context.Background(), feeds.NewClient("orb/"+version, 30*time.Second), *newsURL, *weatherURL)
 		feedView = store.View
+		startFeeds = func() {
+			store.Start(context.Background(), feeds.NewClient("orb/"+version, 30*time.Second), *newsURL, *weatherURL)
+		}
+	}
+
+	// As root: a separate helper keeps only what reading every process's
+	// sockets needs, and this process drops to the invoking user before
+	// any feed is fetched or parsed. Failure to drop is fatal.
+	drop := func(bool) error { return nil }
+	if os.Geteuid() == 0 && !*demo {
+		if h, err := priv.StartHelper(); err != nil {
+			fmt.Fprintf(os.Stderr, "orb: warning: %v; the network page will not see other users' processes\n", err)
+		} else {
+			sampler.Owners = h.Owners
+			defer h.Close()
+		}
+		target := priv.TargetFromEnv(os.Getenv)
+		drop = func(tookVT bool) error {
+			var keep []priv.Cap
+			if tookVT {
+				keep = append(keep, priv.CapSysTTYConfig) // to give the console back
+			}
+			if err := priv.Drop(target, keep...); err != nil {
+				return fmt.Errorf("dropping root: %w", err)
+			}
+			return nil
+		}
+	}
+	// Terminal and one-shot modes have nothing privileged to open: drop now.
+	if !*gfxMode || *once != "" {
+		if err := drop(false); err != nil {
+			fail("%v", err)
+		}
+		startFeeds()
 	}
 
 	if *once != "" {
@@ -150,7 +195,14 @@ func main() {
 			}
 		}
 		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: ti,
-			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, Sockets: wantSockets})
+			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, Sockets: wantSockets,
+			AfterOpen: func(tookVT bool) error {
+				if err := drop(tookVT); err != nil {
+					return err
+				}
+				startFeeds()
+				return nil
+			}})
 		if err != nil {
 			fail("%v", err)
 		}

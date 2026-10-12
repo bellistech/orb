@@ -20,6 +20,7 @@ See `docs/DESIGN.md` for layout, themes and targets. Decisions go in `docs/adr/`
 make build          # ./orb
 make test           # go test ./... -count=1 -race
 make lint           # go vet + staticcheck
+make test-priv      # real privilege drops + end-to-end, in a user namespace
 make fmt            # gofmt -s -w .
 make demo           # run with synthetic data (both pages)
 ./orb -gfx -demo -once 3440x1440 > f.png      # graphics-mode frame as PNG
@@ -34,6 +35,7 @@ make demo           # run with synthetic data (both pages)
 - `internal/ui/` — themes, widgets (frame, gauge, braille graph, heatmap, block-font clock, range bar), pages (`Dash`, `News`, `Net`), panels, responsive grid, weather sprites. Pure: `ui.View` in, canvas out
 - `internal/feeds/` — news + weather JSON: fetch (UA `orb/<version>`, https only, 8 MiB cap, redirects re-checked), parse + validate, `Clean` (HTML unescape, transliterate, printable ASCII only, emoji dropped; fuzzed), `Poll` with backoff, `Store` (RWMutex snapshot + version), `Brief` (screen-safe errors, never the URL), `Demo`
 - `internal/config/` — `~/.config/orb/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override
+- `internal/priv/` — privilege separation (ADR-0002): `Drop` (all-thread uid/gid/caps/no_new_privs, verified per thread), socket-owner helper (`-sock-helper`, nobody + CAP_DAC_READ_SEARCH + CAP_SYS_PTRACE, empty netns) and its pipe protocol
 - `internal/tui/` — Bubble Tea v2 program: ticks the sampler, renders, handles resize and keys
 - `internal/gfx/` — graphics mode: hand-drawn 5x7 font in 8x8 tiles (2x via `Cell.Quad`), procedural blocks/braille, RPG-style windows (from `canvas.Windows`), overlays (orb from `canvas.Orbs`, sparkles), animation (tween via `sys.Lerp`, title shimmer, stars), `ParseKeys`, fbdev driver with validated geometry and dirty-row blits, VT control (KD_GRAPHICS, VT_PROCESS switching, raw keys, restore on every exit), PNG output
 
@@ -46,6 +48,7 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - `unsafe` only for ioctl struct pointers in `gfx/*_linux.go`; every kernel-reported size is validated (`checkLayout`) before indexing
 - No cobra (stdlib `flag`), no logging framework (stderr)
 - Build flags: `CGO_ENABLED=0 -trimpath -s -w` (static, no libc), version via `-X main.version=$(VERSION)`
+- As root, nothing network- or feed-related may run before the main process drops (`startFeeds` after `drop`); never add root work after it
 - Ubuntu 25.10's sudo is sudo-rs, which always runs commands in a pty: `sudo orb -gfx` goes through the free-VT path, never `/dev/tty`
 - Readers are best-effort: a missing file is an empty value, never an error or panic
 - Everything shown is untrusted text (process names, feeds): the canvas turns control/format runes into `?` in `Set`; never bypass it

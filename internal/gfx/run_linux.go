@@ -27,6 +27,10 @@ type Options struct {
 	Page     ui.Page
 	Feeds    func() feeds.View // may be nil
 	Sockets  func(bool)        // asks the source for sockets; may be nil
+	// AfterOpen runs once the framebuffer and console are open, before
+	// the first frame: where a root process drops privileges. tookVT says
+	// whether restoring the console will need CAP_SYS_TTY_CONFIG.
+	AfterOpen func(tookVT bool) error
 }
 
 const tween = 600 * time.Millisecond
@@ -59,6 +63,11 @@ func Run(o Options) error {
 		return err
 	}
 	defer con.Restore()
+	if o.AfterOpen != nil {
+		if err := o.AfterOpen(con.TookVT()); err != nil {
+			return err
+		}
+	}
 
 	keys := make(chan Key, 16)
 	go func() {

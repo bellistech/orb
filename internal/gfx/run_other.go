@@ -13,15 +13,16 @@ import (
 
 // Options configures a graphics-mode run.
 type Options struct {
-	Device   string
-	Source   func() *sys.Snapshot
-	Interval time.Duration
-	Theme    int
-	Scale    int
-	FPS      int
-	Page     ui.Page
-	Feeds    func() feeds.View
-	Sockets  func(bool)
+	Device    string
+	Source    func() *sys.Snapshot
+	Interval  time.Duration
+	Theme     int
+	Scale     int
+	FPS       int
+	Page      ui.Page
+	Feeds     func() feeds.View
+	Sockets   func(bool)
+	AfterOpen func(tookVT bool) error
 }
 
 // Run is only available on Linux.

@@ -178,6 +178,10 @@ func ioctlPtr(fd int, req uint, p unsafe.Pointer) error {
 	return nil
 }
 
+// TookVT reports whether orb took a free VT rather than running on its
+// controlling terminal; restoring such a VT needs CAP_SYS_TTY_CONFIG.
+func (c *Console) TookVT() bool { return c.tty0 != nil }
+
 // Release lets the kernel switch away to another VT.
 func (c *Console) Release() error { return unix.IoctlSetInt(int(c.f.Fd()), vtRelDisp, 1) }
 
