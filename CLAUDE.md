@@ -45,7 +45,8 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - Deps: bubbletea v2, go-colorful, golang.org/x/sys. Nothing else without a reason; graphics mode is stdlib + x/sys only
 - `unsafe` only for ioctl struct pointers in `gfx/*_linux.go`; every kernel-reported size is validated (`checkLayout`) before indexing
 - No cobra (stdlib `flag`), no logging framework (stderr)
-- Build flags: `-trimpath -s -w`, version via `-X main.version=$(VERSION)`
+- Build flags: `CGO_ENABLED=0 -trimpath -s -w` (static, no libc), version via `-X main.version=$(VERSION)`
+- Ubuntu 25.10's sudo is sudo-rs, which always runs commands in a pty: `sudo orb -gfx` goes through the free-VT path, never `/dev/tty`
 - Readers are best-effort: a missing file is an empty value, never an error or panic
 - Everything shown is untrusted text (process names, feeds): the canvas turns control/format runes into `?` in `Set`; never bypass it
 - No network lookups for display (no reverse DNS); service names come from `/etc/services`

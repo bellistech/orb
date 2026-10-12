@@ -1,7 +1,9 @@
 package config
 
 import (
+	"errors"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -75,5 +77,30 @@ func TestFPSZeroIsSet(t *testing.T) {
 	c, _, err := Load(write(t, "fps = 0\n", 0o600))
 	if err != nil || !c.HasFPS || c.FPS != 0 {
 		t.Fatalf("got %+v, %v", c, err)
+	}
+}
+
+func TestDefaultPathUnderSudo(t *testing.T) {
+	lookup := func(name string) (*user.User, error) {
+		if name == "govan" {
+			return &user.User{HomeDir: "/home/govan"}, nil
+		}
+		return nil, errors.New("unknown user")
+	}
+	cfg := func() (string, error) { return "/root/.config", nil }
+	for _, tc := range []struct {
+		euid int
+		sudo string
+		want string
+	}{
+		{0, "govan", "/home/govan/.config/orb/config"}, // sudo orb
+		{0, "", "/root/.config/orb/config"},            // root login
+		{0, "root", "/root/.config/orb/config"},
+		{0, "nobody-here", "/root/.config/orb/config"}, // unknown user: own config
+		{1000, "govan", "/root/.config/orb/config"},    // not root: SUDO_USER ignored
+	} {
+		if got := defaultPath(tc.euid, tc.sudo, lookup, cfg); got != tc.want {
+			t.Errorf("euid=%d SUDO_USER=%q: %s, want %s", tc.euid, tc.sudo, got, tc.want)
+		}
 	}
 }

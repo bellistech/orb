@@ -32,7 +32,8 @@ type Options struct {
 const tween = 600 * time.Millisecond
 
 // Run draws the dashboard on the framebuffer until q, Ctrl+C or a
-// termination signal. The console is restored on every exit path,
+// termination signal. On a VT it draws there; run as root from anywhere
+// else (sudo, SSH) it takes a free VT and switches back when done. The console is restored on every exit path,
 // including panics in this goroutine.
 func Run(o Options) error {
 	if o.Source == nil || o.Interval <= 0 || o.FPS < 0 || o.FPS > 60 || o.Theme < 0 || o.Theme >= len(ui.Themes) {
@@ -163,7 +164,7 @@ func Run(o Options) error {
 			case k.Code == KeyDown || k.Code == KeyRight:
 				reader.Skip(1, time.Now())
 				draw()
-			case k.Rune == 'q' || k.Rune == 'Q':
+			case k.Rune == 'q' || k.Rune == 'Q' || k.Code == KeyInterrupt:
 				return nil
 			case k.Rune == 't' || k.Rune == 'T':
 				theme = (theme + 1) % len(ui.Themes)
