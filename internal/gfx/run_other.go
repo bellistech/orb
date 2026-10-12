@@ -21,6 +21,7 @@ type Options struct {
 	FPS      int
 	Page     ui.Page
 	Feeds    func() feeds.View
+	Sockets  func(bool)
 }
 
 // Run is only available on Linux.

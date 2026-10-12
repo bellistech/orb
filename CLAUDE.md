@@ -29,9 +29,9 @@ make demo           # run with synthetic data (both pages)
 ## Architecture
 
 - `cmd/orb/main.go` — entry point, stdlib `flag`
-- `internal/sys/` — metric readers (`/proc/stat`, `meminfo`, `net/dev`, `diskstats`, `mounts`, hwmon, amdgpu sysfs, `/proc/[pid]/stat`), `Sampler` turns counters into rates + 600-sample histories, `Demo` synthesizes a busy host
+- `internal/sys/` — metric readers (`/proc/stat`, `meminfo`, `net/dev`, `diskstats`, `mounts`, hwmon, amdgpu sysfs, `/proc/[pid]/stat`; sockets from `/proc/net/*` + fd inode owners, only while `Sampler.WantSockets` is set), `Sampler` turns counters into rates + 600-sample histories, `Demo` synthesizes a busy host
 - `internal/canvas/` — cell grid (rune + fg + bg + bold), clipped regions, truecolor SGR serializer
-- `internal/ui/` — themes, widgets (frame, gauge, braille graph, heatmap, block-font clock, range bar), pages (`Dash`, `News`), panels, responsive grid, weather sprites. Pure: `ui.View` in, canvas out
+- `internal/ui/` — themes, widgets (frame, gauge, braille graph, heatmap, block-font clock, range bar), pages (`Dash`, `News`, `Net`), panels, responsive grid, weather sprites. Pure: `ui.View` in, canvas out
 - `internal/feeds/` — news + weather JSON: fetch (UA `orb/<version>`, https only, 8 MiB cap, redirects re-checked), parse + validate, `Clean` (HTML unescape, transliterate, printable ASCII only, emoji dropped; fuzzed), `Poll` with backoff, `Store` (RWMutex snapshot + version), `Brief` (screen-safe errors, never the URL), `Demo`
 - `internal/config/` — `~/.config/orb/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override
 - `internal/tui/` — Bubble Tea v2 program: ticks the sampler, renders, handles resize and keys
@@ -47,6 +47,8 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - No cobra (stdlib `flag`), no logging framework (stderr)
 - Build flags: `-trimpath -s -w`, version via `-X main.version=$(VERSION)`
 - Readers are best-effort: a missing file is an empty value, never an error or panic
+- Everything shown is untrusted text (process names, feeds): the canvas turns control/format runes into `?` in `Set`; never bypass it
+- No network lookups for display (no reverse DNS); service names come from `/etc/services`
 - Feed content is hostile: every string through `feeds.Clean`, every number range-checked, nothing from a feed reaches the terminal unsanitized
 - The news URL is private: it lives only in the user's config file, never in the repo, docs, tests or on screen
 - Never fetch article pages or anything beyond the two configured JSON feeds; summaries come from the feed's `description` only
