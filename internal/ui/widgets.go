@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"nocterm/internal/canvas"
+	"orb/internal/canvas"
 )
 
 // Frame draws a rounded border with the title set into the top edge and an

@@ -1,4 +1,4 @@
-# nocterm design
+# orb design
 
 View-only host health dashboard for the terminal. Same binary over SSH and on
 the desk monitor. Host metrics first; Unheaded data (BGP, eBPF, app logs, The
@@ -76,7 +76,7 @@ diffing still works. The headline
 windows show one line per headline, pages rotating every 15 s with
 staggered starts. The page lays out every frame while typing; tile diffing
 keeps a frame at ~0.15 ms. Feeds are JSON caches,
-configured in `~/.config/nocterm/config`.
+configured in `~/.config/orb/config`.
 
 ## Rendering
 
@@ -123,4 +123,3 @@ row via upper half blocks (fg = top core, bg = bottom core).
   log tail with severity color.
 - Autostart graphics mode on the desk VT (systemd unit or login hook).
 - DRM/KMS backend and hosting other binaries fullscreen: [ADR-0001](adr/0001-native-kiosk-renderer.md).
-- Name.

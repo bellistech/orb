@@ -3,9 +3,9 @@ package ui
 import (
 	"time"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/feeds"
-	"nocterm/internal/sys"
+	"orb/internal/canvas"
+	"orb/internal/feeds"
+	"orb/internal/sys"
 )
 
 // Page is which screen is showing.
@@ -115,7 +115,7 @@ func Render(w, h int, v View, t *Theme, square bool) *canvas.Canvas {
 	c.Square = square
 	full := c.Full()
 	if w < 40 || h < 12 {
-		full.Text(0, 0, "nocterm needs at least 40x12", t.FG)
+		full.Text(0, 0, "orb needs at least 40x12", t.FG)
 		return c
 	}
 	if v.Snap == nil {

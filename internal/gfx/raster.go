@@ -6,8 +6,8 @@ package gfx
 import (
 	"math"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/ui"
+	"orb/internal/canvas"
+	"orb/internal/ui"
 )
 
 // Frame is a logical (unscaled) image, one 0xRRGGBB value per pixel.

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/feeds"
-	"nocterm/internal/sys"
+	"orb/internal/canvas"
+	"orb/internal/feeds"
+	"orb/internal/sys"
 )
 
 func line(c *canvas.Canvas, y int) string { return strings.Split(c.Plain(), "\n")[y] }

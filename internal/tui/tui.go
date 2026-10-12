@@ -7,10 +7,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/feeds"
-	"nocterm/internal/sys"
-	"nocterm/internal/ui"
+	"orb/internal/canvas"
+	"orb/internal/feeds"
+	"orb/internal/sys"
+	"orb/internal/ui"
 )
 
 type sampleMsg *sys.Snapshot
@@ -119,7 +119,7 @@ func (m Model) View() tea.View {
 	m.reader.Apply(&view)
 	v := tea.NewView(ui.Render(m.w, m.h, view, t, false).String())
 	v.AltScreen = true
-	v.WindowTitle = "nocterm"
+	v.WindowTitle = "orb"
 	v.BackgroundColor = rgba(t.BG)
 	return v
 }

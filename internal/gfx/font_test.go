@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"nocterm/internal/feeds"
-	"nocterm/internal/sys"
-	"nocterm/internal/ui"
+	"orb/internal/feeds"
+	"orb/internal/sys"
+	"orb/internal/ui"
 )
 
 func TestFontArtWellFormed(t *testing.T) {

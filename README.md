@@ -1,16 +1,16 @@
-# nocterm
+# orb
 
 View-only host health dashboard for the terminal. Built for a big monitor across the desk, works the same over SSH.
 
 ```bash
-nocterm                     # live dashboard in the terminal
-nocterm -gfx                # pixel graphics on the local console (no desktop)
-nocterm -page news          # start on news & weather instead of the dashboard
-nocterm -theme chrono       # phosphor (default), gizzard, lantern, chrono
-nocterm -interval 2s        # sample every 2s
-nocterm -demo               # synthetic data
-nocterm -once 215x45        # print one frame and exit
-nocterm -gfx -once 3440x1440 > frame.png
+orb                     # live dashboard in the terminal
+orb -gfx                # pixel graphics on the local console (no desktop)
+orb -page news          # start on news & weather instead of the dashboard
+orb -theme chrono       # phosphor (default), gizzard, lantern, chrono
+orb -interval 2s        # sample every 2s
+orb -demo               # synthetic data
+orb -once 215x45        # print one frame and exit
+orb -gfx -once 3440x1440 > frame.png
 ```
 
 Keys: `d` dashboard, `w` news & weather, `space` pause/resume the news reader,
@@ -18,8 +18,8 @@ Keys: `d` dashboard, `w` news & weather, `space` pause/resume the news reader,
 
 ## Configuration
 
-`~/.config/nocterm/config` (or `-config`), `key = value`, `#` comments.
-Flags override it. Keep it `chmod 600`: nocterm warns otherwise, since feed
+`~/.config/orb/config` (or `-config`), `key = value`, `#` comments.
+Flags override it. Keep it `chmod 600`: orb warns otherwise, since feed
 URLs may be private.
 
 ```
@@ -45,23 +45,23 @@ menus. Values glide between samples, titles shimmer, stars twinkle behind the
 windows.
 
 ```bash
-nocterm -gfx -scale 4       # pixel size, 1..8 (4 = 107x45 tiles on 3440x1440)
-nocterm -gfx -fps 0         # no animation, redraw once per sample
+orb -gfx -scale 4       # pixel size, 1..8 (4 = 107x45 tiles on 3440x1440)
+orb -gfx -fps 0         # no animation, redraw once per sample
 ```
 
 Needs membership in the `video` group and must start from the monitor's own
-VT, not SSH. Ctrl+Alt+F-key switches work; nocterm pauses while away.
+VT, not SSH. Ctrl+Alt+F-key switches work; orb pauses while away.
 If a killed process leaves the console blank:
 
 ```bash
-nocterm -reset-console -              # typed blind on that console
-sudo nocterm -reset-console /dev/tty1 # or from SSH
+orb -reset-console -              # typed blind on that console
+sudo orb -reset-console /dev/tty1 # or from SSH
 ```
 
 ## Install
 
 ```bash
-git clone <repo> && cd nocterm
+git clone <repo> && cd orb
 make build && sudo make install
 ```
 
@@ -86,7 +86,7 @@ rotate every 15 seconds, and below them a reader that tells one
 story at a time like an RPG dialog box: headline, then the summary typed out
 at 40 characters a second, a 5 second pause after each page, a blinking ▼ when another follows.
 Stories come in a random order, reshuffled with each news fetch. Summaries come only from the feed's own `description`
-field; nocterm never fetches the articles.
+field; orb never fetches the articles.
 
 Layout adapts to the size: two rows of three columns at 180+ cells wide, three rows of two at 100+, a single stack below that.
 
