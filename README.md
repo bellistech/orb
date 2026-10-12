@@ -80,11 +80,11 @@ Requires: Linux, Go 1.27+ to build. Truecolor terminal recommended; on the bare 
 | Processes | `/proc/[pid]/stat` top by CPU |
 
 News & weather page (`w`): current conditions with animated weather art,
-hourly temperature curve, five-day range bars, and a reader that tells one
+hourly temperature curve, five-day range bars, six headline windows that
+rotate every 15 seconds, and below them a reader that tells one
 story at a time like an RPG dialog box: headline, then the summary typed out
-at reading pace, a blinking ▼ when another page follows. Stories alternate
-between categories, newest first. Below it, six headline windows rotate
-every 15 seconds. Summaries come only from the feed's own `description`
+at 40 characters a second, a blinking ▼ when another page follows. Stories alternate
+between categories, newest first. Summaries come only from the feed's own `description`
 field; nocterm never fetches the articles.
 
 Layout adapts to the size: two rows of three columns at 180+ cells wide, three rows of two at 100+, a single stack below that.

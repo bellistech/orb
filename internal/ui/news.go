@@ -17,10 +17,10 @@ func newsGrid(w int) []row {
 	switch {
 	case w >= 180:
 		weather.weight = 30
-		return []row{{1, []slot{weather, {nil, 70, []slot{{drawReader, 58, nil}, {newsColumns(3), 42, nil}}}}}}
+		return []row{{1, []slot{weather, {nil, 70, []slot{{newsColumns(3), 42, nil}, {drawReader, 58, nil}}}}}}
 	case w >= 100:
 		weather.weight = 36
-		return []row{{1, []slot{weather, {nil, 64, []slot{{drawReader, 58, nil}, {newsColumns(2), 42, nil}}}}}}
+		return []row{{1, []slot{weather, {nil, 64, []slot{{newsColumns(2), 42, nil}, {drawReader, 58, nil}}}}}}
 	default:
 		out := []row{{24, []slot{{drawReader, 1, nil}}}, {16, []slot{{drawNow, 1, nil}}}, {12, []slot{{drawDaily, 1, nil}}}}
 		for i := range 6 {
