@@ -6,7 +6,9 @@ import (
 	"errors"
 	"time"
 
+	"nocterm/internal/feeds"
 	"nocterm/internal/sys"
+	"nocterm/internal/ui"
 )
 
 // Options configures a graphics-mode run.
@@ -17,6 +19,8 @@ type Options struct {
 	Theme    int
 	Scale    int
 	FPS      int
+	Page     ui.Page
+	Feeds    func() feeds.View
 }
 
 // Run is only available on Linux.

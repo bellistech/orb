@@ -1,11 +1,36 @@
 package ui
 
 import (
+	"time"
+
 	"nocterm/internal/canvas"
+	"nocterm/internal/feeds"
 	"nocterm/internal/sys"
 )
 
-type drawFn func(canvas.Region, *sys.Snapshot, *Theme)
+// Page is which screen is showing.
+type Page int
+
+// Pages, in key order: d and w.
+const (
+	Dash Page = iota
+	News
+)
+
+// View is everything a frame shows.
+type View struct {
+	Page  Page
+	Snap  *sys.Snapshot
+	Feeds feeds.View
+	Now   time.Time // wall clock for the header and news rotation
+}
+
+type drawFn func(canvas.Region, *View, *Theme)
+
+// dash adapts a dashboard panel, which only needs the host snapshot.
+func dash(f func(canvas.Region, *sys.Snapshot, *Theme)) drawFn {
+	return func(r canvas.Region, v *View, t *Theme) { f(r, v.Snap, t) }
+}
 
 // slot is one panel, or (with stack) a column of panels split vertically.
 type slot struct {
@@ -23,10 +48,18 @@ type row struct {
 const headerH = 5
 
 // memGPU stacks memory over the GPUs: neither fills a tall panel alone.
-var memGPU = []slot{{drawMem, 42, nil}, {drawGPU, 58, nil}}
+var memGPU = []slot{{dash(drawMem), 42, nil}, {dash(drawGPU), 58, nil}}
 
-// grid picks rows for the terminal width. Weights are proportions.
-func grid(w int) []row {
+// grid picks rows for the page and width. Weights are proportions.
+func grid(p Page, w int) []row {
+	if p == News {
+		return newsGrid(w)
+	}
+	var (
+		drawCPU, drawNet, drawDisk = dash(drawCPU), dash(drawNet), dash(drawDisk)
+		drawTemp, drawProcs        = dash(drawTemp), dash(drawProcs)
+		drawMem, drawGPU           = dash(drawMem), dash(drawGPU)
+	)
 	switch {
 	case w >= 180:
 		return []row{
@@ -73,7 +106,7 @@ func split(n, gap int, weights []int) []int {
 }
 
 // Render draws one frame of w x h cells. square is true for graphics tiles.
-func Render(w, h int, s *sys.Snapshot, t *Theme, square bool) *canvas.Canvas {
+func Render(w, h int, v View, t *Theme, square bool) *canvas.Canvas {
 	c := canvas.New(w, h, t.BG)
 	c.Square = square
 	full := c.Full()
@@ -81,13 +114,16 @@ func Render(w, h int, s *sys.Snapshot, t *Theme, square bool) *canvas.Canvas {
 		full.Text(0, 0, "nocterm needs at least 40x12", t.FG)
 		return c
 	}
-	if s == nil {
+	if v.Snap == nil {
 		full.Text(2, 1, "sampling…", t.Dim)
 		return c
 	}
-	drawHeader(full.Sub(0, 0, w, headerH), s, t)
+	if v.Now.IsZero() {
+		v.Now = v.Snap.Time
+	}
+	drawHeader(full.Sub(0, 0, w, headerH), &v, t)
 
-	rows := grid(w)
+	rows := grid(v.Page, w)
 	weights := make([]int, len(rows))
 	for i, r := range rows {
 		weights[i] = r.weight
@@ -100,7 +136,7 @@ func Render(w, h int, s *sys.Snapshot, t *Theme, square bool) *canvas.Canvas {
 		}
 		x := 0
 		for j, ww := range split(w, 1, ws) {
-			drawSlot(rows[i].slots[j], full.Sub(x, y, ww, hh), s, t)
+			drawSlot(rows[i].slots[j], full.Sub(x, y, ww, hh), &v, t)
 			x += ww + 1
 		}
 		y += hh
@@ -108,9 +144,9 @@ func Render(w, h int, s *sys.Snapshot, t *Theme, square bool) *canvas.Canvas {
 	return c
 }
 
-func drawSlot(sl slot, r canvas.Region, s *sys.Snapshot, t *Theme) {
+func drawSlot(sl slot, r canvas.Region, v *View, t *Theme) {
 	if sl.stack == nil {
-		sl.draw(r, s, t)
+		sl.draw(r, v, t)
 		return
 	}
 	ws := make([]int, len(sl.stack))
@@ -119,7 +155,7 @@ func drawSlot(sl slot, r canvas.Region, s *sys.Snapshot, t *Theme) {
 	}
 	y := 0
 	for i, hh := range split(r.H, 0, ws) {
-		drawSlot(sl.stack[i], r.Sub(0, y, r.W, hh), s, t)
+		drawSlot(sl.stack[i], r.Sub(0, y, r.W, hh), v, t)
 		y += hh
 	}
 }

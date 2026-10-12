@@ -26,7 +26,7 @@ func BenchmarkAnimatedFrameBlit(b *testing.B) {
 			}
 			snap := sys.Demo(time.Unix(1_800_000_000, 0))
 			th := ui.Themes[0]
-			c := ui.Render(cols, rows, snap, th, true)
+			c := ui.Render(cols, rows, ui.View{Snap: snap}, th, true)
 			r := NewRenderer()
 			r.Draw(c, th, Anim{T: 99})
 			fb.Blit(r.Frame(), nil, scale, px, py)
@@ -51,7 +51,7 @@ func BenchmarkTweenFrame(b *testing.B) {
 	r := NewRenderer()
 	for i := range b.N {
 		snap := sys.Lerp(a, z, float64(i%10)/10)
-		c := ui.Render(107, 45, snap, th, true)
+		c := ui.Render(107, 45, ui.View{Snap: snap}, th, true)
 		fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: float64(i) / 15}), 4, 8, 0)
 	}
 }

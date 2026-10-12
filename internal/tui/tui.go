@@ -8,26 +8,33 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"nocterm/internal/canvas"
+	"nocterm/internal/feeds"
 	"nocterm/internal/sys"
 	"nocterm/internal/ui"
 )
 
 type sampleMsg *sys.Snapshot
 
-// Model is the Bubble Tea model. It only displays; the sole keys are t
-// (next theme) and q (quit).
+// Model is the Bubble Tea model. It only displays; the keys are d and w
+// (pages), t (next theme) and q (quit).
 type Model struct {
 	source   func() *sys.Snapshot
 	interval time.Duration
 	theme    int
+	page     ui.Page
+	feeds    func() feeds.View
 	snap     *sys.Snapshot
 	w, h     int
 }
 
-// New returns a model sampling every interval, starting on theme. With demo
-// it shows synthetic data instead of the host's.
-func New(interval time.Duration, theme string, demo bool) Model {
-	m := Model{interval: interval}
+// New returns a model sampling every interval, starting on theme and page.
+// With demo it shows synthetic data instead of the host's. feedView may be
+// nil.
+func New(interval time.Duration, theme string, page ui.Page, demo bool, feedView func() feeds.View) Model {
+	if feedView == nil {
+		feedView = func() feeds.View { return feeds.View{} }
+	}
+	m := Model{interval: interval, page: page, feeds: feedView}
 	if demo {
 		m.source = func() *sys.Snapshot { return sys.Demo(time.Now()) }
 	} else {
@@ -65,6 +72,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "t":
 			m.theme = (m.theme + 1) % len(ui.Themes)
+		case "d":
+			m.page = ui.Dash
+		case "w":
+			m.page = ui.News
 		}
 	}
 	return m, nil
@@ -73,7 +84,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the current snapshot full-screen.
 func (m Model) View() tea.View {
 	t := ui.Themes[m.theme]
-	v := tea.NewView(ui.Render(m.w, m.h, m.snap, t, false).String())
+	view := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: time.Now()}
+	v := tea.NewView(ui.Render(m.w, m.h, view, t, false).String())
 	v.AltScreen = true
 	v.WindowTitle = "nocterm"
 	v.BackgroundColor = rgba(t.BG)

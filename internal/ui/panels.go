@@ -20,12 +20,14 @@ func shade(t *Theme, accent canvas.Color) func(float64) canvas.Color {
 	return func(l float64) canvas.Color { return Mix(base, accent, l) }
 }
 
-func drawHeader(r canvas.Region, s *sys.Snapshot, t *Theme) {
+func drawHeader(r canvas.Region, v *View, t *Theme) {
+	s := v.Snap
 	in := Frame(r, t, "", "", t.Host)
 	if in.Empty() {
 		return
 	}
-	now := s.Time
+	drawTabs(r, v.Page, t)
+	now := v.Now
 	clock := now.Format("15:04")
 	cw := BigWidth(clock, in.Square())
 	x := 0
@@ -493,4 +495,29 @@ func Uptime(d time.Duration) string {
 	default:
 		return fmt.Sprintf("%dm", mins)
 	}
+}
+
+// drawTabs writes the page keys into the header's top border, the active
+// page lit.
+func drawTabs(r canvas.Region, p Page, t *Theme) {
+	edge := Mix(t.Host, t.BG, 0.55)
+	x := r.Text(2, 0, " ", edge)
+	for i, tab := range []struct {
+		key, name string
+		page      Page
+	}{{"d", "DASH", Dash}, {"w", "NEWS", News}} {
+		if i > 0 {
+			x = r.Text(x, 0, "  ", edge)
+		}
+		if tab.page == p {
+			x = r.Bold(x, 0, tab.key, t.FG)
+			x = r.Text(x, 0, " ", edge)
+			x = r.Bold(x, 0, tab.name, t.Host)
+		} else {
+			x = r.Text(x, 0, tab.key, t.Dim)
+			x = r.Text(x, 0, " ", edge)
+			x = r.Text(x, 0, tab.name, t.Faint)
+		}
+	}
+	r.Text(x, 0, " ", edge)
 }

@@ -1,0 +1,69 @@
+package feeds
+
+import "time"
+
+// Demo returns plausible feed data for -demo and screenshots.
+func Demo(now time.Time) View {
+	ago := func(m int) time.Time { return now.Add(-time.Duration(m) * time.Minute) }
+	cat := func(name string, items ...Item) Category { return Category{Name: name, Items: items} }
+	n := &News{Generated: now, Categories: []Category{
+		cat("Security",
+			Item{"Weekly Recap: Helpdesk 0-Days, Rogue Certs and AI-Fooling Malware", "The Hacker News", ago(25)},
+			Item{"OpenSSH 10.4 released with fixes for two client bugs", "LWN.net", ago(140)},
+			Item{"CISA adds three exploited VPN flaws to the KEV catalog", "CISA Advisories", ago(300)},
+			Item{"Satel Netco Design", "CISA Advisories", ago(2900)},
+			Item{"Inside a ransomware crew's build pipeline", "Krebs on Security", ago(4000)}),
+		cat("Networking",
+			Item{"Sample netlab SRv6 Lab Topologies", "ipSpace.net", ago(48)},
+			Item{"EVPN multihoming without the tears", "ipSpace.net", ago(600)},
+			Item{"BGP route leaks of the month", "APNIC Blog", ago(1500)},
+			Item{"QUIC load balancing in practice", "Cloudflare", ago(3000)}),
+		cat("SRE / DevOps",
+			Item{"Hacking the Go compiler to efficiently map IPv4 to IPv6", "Vincent Bernat", ago(90)},
+			Item{"Error budgets for batch jobs", "Google SRE", ago(2000)},
+			Item{"What a 3am page taught us about retries", "Honeycomb", ago(5000)}),
+		cat("Linux",
+			Item{"ROCm 10 OpenCL vs. Mesa Rusticl on AMD Strix Halo", "Phoronix", ago(30)},
+			Item{"[$] The 2026 Maintainers Summit", "LWN.net", ago(150)},
+			Item{"Linux 6.18-rc1 released", "LWN.net", ago(1300)}),
+		cat("Community",
+			Item{"A Modern Web App in C", "Hacker News", ago(12)},
+			Item{"Show HN: A dashboard that looks like a SNES menu", "Hacker News", ago(70)},
+			Item{"The quiet death of the RSS reader, again", "Hacker News", ago(800)}),
+		cat("Other",
+			Item{"King Gizzard announce winter tour dates", "KGLW", ago(200)},
+			Item{"Opening Reception for Sandy Hook's Artist in Residence", "National Park Service", ago(9000)}),
+	}}
+	w := &Weather{
+		Location: "Austin, Texas", Updated: ago(14),
+		Now: Now{Temp: 80, High: 91, Low: 72, Precip: 40, Summary: "Scattered showers", Kind: Rain},
+		Daily: []Day{
+			{"Monday", 89, 72, "Scattered thunderstorms", Storm},
+			{"Tuesday", 93, 77, "Partly sunny", PartlyCloudy},
+			{"Wednesday", 90, 72, "Partly sunny", PartlyCloudy},
+			{"Thursday", 89, 67, "Sunny", Clear},
+			{"Friday", 70, 54, "Light rain", Rain},
+		},
+	}
+	temps := []int{79, 81, 83, 85, 86, 86, 84, 82, 79, 77, 75, 74}
+	kinds := []Kind{Cloudy, Cloudy, Rain, Storm, Storm, Rain, Cloudy, PartlyCloudy, PartlyCloudy, Clear, Clear, Clear}
+	for i, tp := range temps {
+		h := (11 + i) % 12
+		if h == 0 {
+			h = 12
+		}
+		ap := "AM"
+		if i >= 1 && i < 13 {
+			ap = "PM"
+		}
+		w.Hourly = append(w.Hourly, Hour{Label: itoa(h) + ap, Temp: tp, Kind: kinds[i]})
+	}
+	return View{News: n, Weather: w, NewsAt: now, WeatherAt: now, NewsOn: true, WeatherOn: true, Version: 1}
+}
+
+func itoa(i int) string {
+	if i >= 10 {
+		return string(rune('0'+i/10)) + string(rune('0'+i%10))
+	}
+	return string(rune('0' + i))
+}

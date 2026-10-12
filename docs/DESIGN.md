@@ -51,6 +51,18 @@ Medium (100-179) uses three rows of two or three panels; narrow (< 100) stacks
 everything. Every panel draws into whatever box it gets and clips; nothing
 assumes a size.
 
+## News & weather page
+
+`w` switches to it, `d` back; tabs in the header's top border show which
+page is up. Weather on the left: current conditions with 12x8 pixel art
+(rain, snow and storms fall, one step per second), the hourly temperature as
+a heat-colored curve over temperatures, mini icons and hours, and a five-day
+forecast with range bars on a shared min..max track. Temperatures use the
+heat ramp from 20°F (cool) to 105°F (hot). On the right, six headline
+categories, newest first, age colored by freshness, pages rotating every
+15 s with staggered starts. Feeds are JSON caches,
+configured in `~/.config/nocterm/config`.
+
 ## Rendering
 
 A cell canvas (rune + fg + bg per cell) with panels drawing into clipped
