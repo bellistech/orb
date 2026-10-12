@@ -1,6 +1,6 @@
 # ADR-0001: Native kiosk renderer
 
-Status: Proposed (long term)
+Status: Accepted (fbdev backend shipped); DRM/KMS and generic kiosk still proposed
 Date: 2026-10-12
 
 ## Context
@@ -34,4 +34,10 @@ applications fullscreen on a headless box.
 
 ## Decision
 
-None yet. Keep the canvas/output boundary clean so this stays possible.
+2026-10-12: ship the fbdev backend as `-gfx` (`internal/gfx`): stdlib +
+golang.org/x/sys only, 8x8 tiles, own font, VT_PROCESS switching, restore on
+every exit path. A cage + foot kiosk was considered and dropped: it pulls in
+a compositor and terminal emulator for a worse look.
+
+Still open: DRM/KMS (needed if fbdev emulation goes away), autostart, and
+whether to grow into a generic kiosk host for other binaries.

@@ -27,7 +27,7 @@ func drawHeader(r canvas.Region, s *sys.Snapshot, t *Theme) {
 	}
 	now := s.Time
 	clock := now.Format("15:04")
-	cw := BigWidth(clock)
+	cw := BigWidth(clock, in.Square())
 	x := 0
 	if in.W >= cw+40 && in.H >= 3 {
 		x = Big(in, 0, 0, clock, func(c int) canvas.Color { return t.Heat(float64(c) / float64(cw) * 0.5) })
@@ -240,8 +240,10 @@ func drawGPU(r canvas.Region, s *sys.Snapshot, t *Theme) {
 		Gauge(in, 6, y+2, gw, f, t, t.heat())
 		in.Bold(6+gw+1, y+2, Pct(f), t.Heat(f))
 		in.TextRight(in.W, y+2, Bytes(float64(used))+" / "+Bytes(float64(total)), t.FG)
-		in.TextRight(in.W, y+1, "", t.FG)
-		y += 4
+		y += 3
+		if y < in.H && len(order) > 1 {
+			y++ // breathing room between devices
+		}
 	}
 	if g := in.Sub(0, y, in.W, in.H-y); g.H >= 2 && len(s.GPUHist) > 0 {
 		g.Text(0, 0, "busy history · "+s.GPUs[order[0]].Card, t.Faint)
@@ -260,6 +262,10 @@ func drawNet(r canvas.Region, s *sys.Snapshot, t *Theme) {
 		return
 	}
 	maxIf := min(len(s.Net), max(in.H/3, 1))
+	nameW := 0
+	for _, n := range s.Net[:maxIf] {
+		nameW = max(nameW, min(len([]rune(n.Name)), 12))
+	}
 	for i := range maxIf {
 		n := s.Net[i]
 		dot := t.Faint
@@ -267,7 +273,16 @@ func drawNet(r canvas.Region, s *sys.Snapshot, t *Theme) {
 			dot = t.Net
 		}
 		in.Set(0, i, '●', dot)
-		in.Text(2, i, trunc(n.Name, 14), t.FG)
+		in.Text(2, i, trunc(n.Name, nameW), t.FG)
+		x := 2 + nameW + 2
+		// The address gets whatever the rates leave; extra ones become +N.
+		if room := in.W - 25 - x; room >= 7 && len(n.Addrs) > 0 {
+			addr := n.Addrs[0]
+			if len(n.Addrs) > 1 {
+				addr += fmt.Sprintf(" +%d", len(n.Addrs)-1)
+			}
+			in.Text(x, i, trunc(addr, room), t.Dim)
+		}
 		in.TextRight(in.W-12, i, "↓ "+Rate(n.RxRate), t.RX)
 		in.TextRight(in.W, i, "↑ "+Rate(n.TxRate), t.TX)
 	}
@@ -372,6 +387,15 @@ func drawTemp(r canvas.Region, s *sys.Snapshot, t *Theme) {
 		in.Text(0, y, trunc("fan "+fan.Chip, labelW), t.Dim)
 		in.TextRight(in.W, y, fmt.Sprintf("%.0f rpm", fan.RPM), t.FG)
 		y++
+	}
+	// Hottest-sensor history fills what the list leaves.
+	if g := in.Sub(0, y+1, in.W, in.H-y-1); g.H >= 3 && len(s.TempHist) > 0 {
+		g.Text(0, 0, "hottest sensor", t.Faint)
+		norm := make([]float64, len(s.TempHist))
+		for i, c := range s.TempHist {
+			norm[i] = tempFrac(sys.Temp{Celsius: c})
+		}
+		Graph(g.Sub(0, 1, g.W, g.H-1), norm, false, t, t.heat())
 	}
 }
 

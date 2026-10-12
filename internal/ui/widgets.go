@@ -14,6 +14,7 @@ func Frame(r canvas.Region, t *Theme, title, sub string, accent canvas.Color) ca
 	if r.W < 2 || r.H < 2 {
 		return r.Sub(0, 0, 0, 0)
 	}
+	r.AddWindow(accent)
 	edge := Mix(accent, t.BG, 0.55)
 	for y := range r.H {
 		for x := range r.W {

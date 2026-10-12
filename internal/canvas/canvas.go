@@ -41,6 +41,20 @@ type Cell struct {
 type Canvas struct {
 	W, H  int
 	cells []Cell
+
+	// Square marks cells as square (graphics tiles) rather than the
+	// terminal's 1:2. Widgets that draw shapes out of cells use it.
+	Square bool
+
+	// Windows records each framed panel so a pixel backend can draw
+	// richer frames than box-drawing characters allow.
+	Windows []Window
+}
+
+// Window is a framed panel in absolute cell coordinates.
+type Window struct {
+	X, Y, W, H int
+	Accent     Color
 }
 
 // New returns a canvas filled with spaces on bg.
@@ -69,6 +83,16 @@ func (r Region) Sub(x, y, w, h int) Region {
 	w = max(min(w, r.W-x), 0)
 	h = max(min(h, r.H-y), 0)
 	return Region{c: r.c, X: r.X + x, Y: r.Y + y, W: w, H: h}
+}
+
+// Square reports whether the canvas cells are square.
+func (r Region) Square() bool { return r.c != nil && r.c.Square }
+
+// AddWindow records r as a framed panel.
+func (r Region) AddWindow(accent Color) {
+	if r.c != nil && !r.Empty() {
+		r.c.Windows = append(r.c.Windows, Window{X: r.X, Y: r.Y, W: r.W, H: r.H, Accent: accent})
+	}
 }
 
 // Empty reports whether nothing can be drawn into r.

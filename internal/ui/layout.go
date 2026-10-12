@@ -7,9 +7,11 @@ import (
 
 type drawFn func(canvas.Region, *sys.Snapshot, *Theme)
 
+// slot is one panel, or (with stack) a column of panels split vertically.
 type slot struct {
 	draw   drawFn
 	weight int
+	stack  []slot
 }
 
 type row struct {
@@ -20,29 +22,32 @@ type row struct {
 // headerH is the fixed height of the header band.
 const headerH = 5
 
+// memGPU stacks memory over the GPUs: neither fills a tall panel alone.
+var memGPU = []slot{{drawMem, 42, nil}, {drawGPU, 58, nil}}
+
 // grid picks rows for the terminal width. Weights are proportions.
 func grid(w int) []row {
 	switch {
 	case w >= 180:
 		return []row{
-			{55, []slot{{drawCPU, 46}, {drawMem, 27}, {drawGPU, 27}}},
-			{45, []slot{{drawNet, 26}, {drawDisk, 26}, {drawTemp, 22}, {drawProcs, 26}}},
+			{55, []slot{{drawCPU, 45, nil}, {nil, 30, memGPU}, {drawTemp, 25, nil}}},
+			{45, []slot{{drawNet, 35, nil}, {drawDisk, 30, nil}, {drawProcs, 35, nil}}},
 		}
 	case w >= 100:
 		return []row{
-			{34, []slot{{drawCPU, 60}, {drawMem, 40}}},
-			{30, []slot{{drawNet, 50}, {drawGPU, 50}}},
-			{36, []slot{{drawDisk, 34}, {drawTemp, 30}, {drawProcs, 36}}},
+			{40, []slot{{drawCPU, 58, nil}, {nil, 42, memGPU}}},
+			{30, []slot{{drawNet, 50, nil}, {drawDisk, 50, nil}}},
+			{30, []slot{{drawTemp, 40, nil}, {drawProcs, 60, nil}}},
 		}
 	default:
 		return []row{
-			{22, []slot{{drawCPU, 1}}},
-			{12, []slot{{drawMem, 1}}},
-			{16, []slot{{drawNet, 1}}},
-			{14, []slot{{drawDisk, 1}}},
-			{12, []slot{{drawTemp, 1}}},
-			{12, []slot{{drawGPU, 1}}},
-			{12, []slot{{drawProcs, 1}}},
+			{22, []slot{{drawCPU, 1, nil}}},
+			{10, []slot{{drawMem, 1, nil}}},
+			{16, []slot{{drawNet, 1, nil}}},
+			{14, []slot{{drawDisk, 1, nil}}},
+			{14, []slot{{drawTemp, 1, nil}}},
+			{12, []slot{{drawGPU, 1, nil}}},
+			{12, []slot{{drawProcs, 1, nil}}},
 		}
 	}
 }
@@ -67,9 +72,10 @@ func split(n, gap int, weights []int) []int {
 	return out
 }
 
-// Render draws one frame of size w x h.
-func Render(w, h int, s *sys.Snapshot, t *Theme) *canvas.Canvas {
+// Render draws one frame of w x h cells. square is true for graphics tiles.
+func Render(w, h int, s *sys.Snapshot, t *Theme, square bool) *canvas.Canvas {
 	c := canvas.New(w, h, t.BG)
+	c.Square = square
 	full := c.Full()
 	if w < 40 || h < 12 {
 		full.Text(0, 0, "nocterm needs at least 40x12", t.FG)
@@ -94,10 +100,26 @@ func Render(w, h int, s *sys.Snapshot, t *Theme) *canvas.Canvas {
 		}
 		x := 0
 		for j, ww := range split(w, 1, ws) {
-			rows[i].slots[j].draw(full.Sub(x, y, ww, hh), s, t)
+			drawSlot(rows[i].slots[j], full.Sub(x, y, ww, hh), s, t)
 			x += ww + 1
 		}
 		y += hh
 	}
 	return c
+}
+
+func drawSlot(sl slot, r canvas.Region, s *sys.Snapshot, t *Theme) {
+	if sl.stack == nil {
+		sl.draw(r, s, t)
+		return
+	}
+	ws := make([]int, len(sl.stack))
+	for i, st := range sl.stack {
+		ws[i] = st.weight
+	}
+	y := 0
+	for i, hh := range split(r.H, 0, ws) {
+		drawSlot(sl.stack[i], r.Sub(0, y, r.W, hh), s, t)
+		y += hh
+	}
 }

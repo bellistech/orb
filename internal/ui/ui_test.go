@@ -84,7 +84,7 @@ func TestRenderAnySize(t *testing.T) {
 		for _, snap := range []*sys.Snapshot{demo, empty, nil} {
 			for w := 1; w <= 260; w += 7 {
 				for h := 1; h <= 90; h += 5 {
-					lines := strings.Split(Render(w, h, snap, th).Plain(), "\n")
+					lines := strings.Split(Render(w, h, snap, th, false).Plain(), "\n")
 					if len(lines) != h {
 						t.Fatalf("%s %dx%d: %d lines", th.Name, w, h, len(lines))
 					}

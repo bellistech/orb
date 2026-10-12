@@ -34,8 +34,9 @@ type Snapshot struct {
 	DiskRead  []float64 // aggregate bytes/s history
 	DiskWrite []float64
 
-	Temps []Temp
-	Fans  []Fan
+	Temps    []Temp
+	Fans     []Fan
+	TempHist []float64 // hottest sensor, °C
 
 	GPUs    []GPU
 	GPUHist [][]float64
@@ -62,19 +63,21 @@ type Sampler struct {
 	diskR    *Ring
 	diskW    *Ring
 	gpuHist  map[string]*Ring
+	tempHist *Ring
 }
 
 // NewSampler primes the counters so the first Sample has rates.
 func NewSampler() *Sampler {
 	s := &Sampler{
-		static:  readHostStatic(),
-		cpuHist: NewRing(History),
-		memHist: NewRing(History),
-		netRx:   NewRing(History),
-		netTx:   NewRing(History),
-		diskR:   NewRing(History),
-		diskW:   NewRing(History),
-		gpuHist: map[string]*Ring{},
+		static:   readHostStatic(),
+		cpuHist:  NewRing(History),
+		memHist:  NewRing(History),
+		netRx:    NewRing(History),
+		netTx:    NewRing(History),
+		diskR:    NewRing(History),
+		diskW:    NewRing(History),
+		gpuHist:  map[string]*Ring{},
+		tempHist: NewRing(History),
 	}
 	s.last = time.Now()
 	s.cpu = readCPUTimes()
@@ -118,7 +121,7 @@ func (s *Sampler) Sample() *Snapshot {
 	net := readNet()
 	var rx, tx float64
 	for name, c := range net {
-		n := NetIf{Name: name, Up: ifUp(name)}
+		n := NetIf{Name: name, Up: ifUp(name), Addrs: ifAddrs(name)}
 		if p, ok := s.net[name]; ok && dt > 0 {
 			n.RxRate = rate(p.rx, c.rx, dt)
 			n.TxRate = rate(p.tx, c.tx, dt)
@@ -159,6 +162,12 @@ func (s *Sampler) Sample() *Snapshot {
 	snap.DiskRead, snap.DiskWrite = s.diskR.Values(), s.diskW.Values()
 
 	snap.Temps, snap.Fans = readSensors()
+	hot := 0.0
+	for _, t := range snap.Temps {
+		hot = max(hot, t.Celsius)
+	}
+	s.tempHist.Push(hot)
+	snap.TempHist = s.tempHist.Values()
 
 	snap.GPUs = readGPUs()
 	for _, g := range snap.GPUs {
