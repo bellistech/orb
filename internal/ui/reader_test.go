@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"nocterm/internal/feeds"
+	"orb/internal/feeds"
 )
 
 func TestStoriesShuffledAndSkipEmpty(t *testing.T) {

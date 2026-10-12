@@ -131,7 +131,7 @@ func TestParseNews(t *testing.T) {
 
 func TestFetch(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("User-Agent") != "nocterm/test" {
+		if r.Header.Get("User-Agent") != "orb/test" {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -147,7 +147,7 @@ func TestFetch(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	c := NewClient("nocterm/test", 100*time.Millisecond)
+	c := NewClient("orb/test", 100*time.Millisecond)
 	ctx := context.Background()
 	if b, err := c.Get(ctx, srv.URL+"/ok"); err != nil || len(b) == 0 {
 		t.Fatalf("ok: %v", err)
@@ -179,7 +179,7 @@ func TestCheckURL(t *testing.T) {
 // Errors shown on screen must never contain the feed URL: the news URL is
 // a private capability.
 func TestBriefHidesURL(t *testing.T) {
-	c := NewClient("nocterm/test", 50*time.Millisecond)
+	c := NewClient("orb/test", 50*time.Millisecond)
 	_, err := c.Get(context.Background(), "http://127.0.0.1:1/secret_path_123.json")
 	if err == nil {
 		t.Fatal("expected error")

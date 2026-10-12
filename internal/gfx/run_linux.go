@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/feeds"
-	"nocterm/internal/sys"
-	"nocterm/internal/ui"
+	"orb/internal/canvas"
+	"orb/internal/feeds"
+	"orb/internal/sys"
+	"orb/internal/ui"
 )
 
 // Options configures a graphics-mode run.

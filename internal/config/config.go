@@ -1,4 +1,4 @@
-// Package config reads ~/.config/nocterm/config: "key = value" lines, '#'
+// Package config reads ~/.config/orb/config: "key = value" lines, '#'
 // comments. It holds settings that should not live on the command line or in
 // the repo, such as private feed URLs. Command-line flags override it.
 package config
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"nocterm/internal/feeds"
+	"orb/internal/feeds"
 )
 
 // Config is every setting the file may hold. Zero values mean unset.
@@ -31,13 +31,13 @@ type Config struct {
 
 const maxSize = 64 << 10
 
-// DefaultPath is $XDG_CONFIG_HOME/nocterm/config or ~/.config/nocterm/config.
+// DefaultPath is $XDG_CONFIG_HOME/orb/config or ~/.config/orb/config.
 func DefaultPath() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(dir, "nocterm", "config")
+	return filepath.Join(dir, "orb", "config")
 }
 
 // Load parses the file at path. A missing file is an empty config. warn is

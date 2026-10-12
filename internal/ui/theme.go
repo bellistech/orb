@@ -4,7 +4,7 @@ package ui
 import (
 	"github.com/lucasb-eyer/go-colorful"
 
-	"nocterm/internal/canvas"
+	"orb/internal/canvas"
 )
 
 // Theme is a palette. Ramp runs cool -> hot and colors every value.

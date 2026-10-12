@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/feeds"
+	"orb/internal/canvas"
+	"orb/internal/feeds"
 )
 
 // Reader pacing: the headline shows alone briefly, then the summary types
@@ -41,7 +41,7 @@ func stories(n *feeds.News, seed uint64) []story {
 			}
 		}
 	}
-	rng := rand.New(rand.NewPCG(seed, 0x6e6f637465726d)) // "nocterm"
+	rng := rand.New(rand.NewPCG(seed, 0x6f7262)) // "orb"
 	rng.Shuffle(len(out), func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out[:min(len(out), maxStories)]
 }

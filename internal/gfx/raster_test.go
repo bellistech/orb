@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/sys"
-	"nocterm/internal/ui"
+	"orb/internal/canvas"
+	"orb/internal/sys"
+	"orb/internal/ui"
 )
 
 func TestGlyphLandsInItsTile(t *testing.T) {

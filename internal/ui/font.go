@@ -1,6 +1,6 @@
 package ui
 
-import "nocterm/internal/canvas"
+import "orb/internal/canvas"
 
 // glyphs is a 3x5 pixel font for the clock. Each string is one pixel row.
 var glyphs = map[rune][5]string{

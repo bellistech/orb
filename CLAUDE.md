@@ -1,4 +1,4 @@
-# nocterm — terminal host dashboard (binary `nocterm`, name not final)
+# orb — host dashboard for the terminal and the Linux console (binary `orb`)
 
 View-only system health dashboard for the terminal. One Go binary, same view over SSH and on the desk monitor (3440x1440 ultrawide). Host metrics from /proc and /sys today; Unheaded data (BGP, eBPF, app logs, The Well) later as more panels.
 
@@ -17,23 +17,23 @@ See `docs/DESIGN.md` for layout, themes and targets. Decisions go in `docs/adr/`
 ## Build
 
 ```bash
-make build          # ./nocterm
+make build          # ./orb
 make test           # go test ./... -count=1 -race
 make lint           # go vet + staticcheck
 make fmt            # gofmt -s -w .
 make demo           # run with synthetic data (both pages)
-./nocterm -gfx -demo -once 3440x1440 > f.png      # graphics-mode frame as PNG
-./nocterm -once 215x45 [-demo] [-theme lantern]   # print one frame and exit
+./orb -gfx -demo -once 3440x1440 > f.png      # graphics-mode frame as PNG
+./orb -once 215x45 [-demo] [-theme lantern]   # print one frame and exit
 ```
 
 ## Architecture
 
-- `cmd/nocterm/main.go` — entry point, stdlib `flag`
+- `cmd/orb/main.go` — entry point, stdlib `flag`
 - `internal/sys/` — metric readers (`/proc/stat`, `meminfo`, `net/dev`, `diskstats`, `mounts`, hwmon, amdgpu sysfs, `/proc/[pid]/stat`), `Sampler` turns counters into rates + 600-sample histories, `Demo` synthesizes a busy host
 - `internal/canvas/` — cell grid (rune + fg + bg + bold), clipped regions, truecolor SGR serializer
 - `internal/ui/` — themes, widgets (frame, gauge, braille graph, heatmap, block-font clock, range bar), pages (`Dash`, `News`), panels, responsive grid, weather sprites. Pure: `ui.View` in, canvas out
-- `internal/feeds/` — news + weather JSON: fetch (UA `nocterm/<version>`, https only, 8 MiB cap, redirects re-checked), parse + validate, `Clean` (HTML unescape, transliterate, printable ASCII only, emoji dropped; fuzzed), `Poll` with backoff, `Store` (RWMutex snapshot + version), `Brief` (screen-safe errors, never the URL), `Demo`
-- `internal/config/` — `~/.config/nocterm/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override
+- `internal/feeds/` — news + weather JSON: fetch (UA `orb/<version>`, https only, 8 MiB cap, redirects re-checked), parse + validate, `Clean` (HTML unescape, transliterate, printable ASCII only, emoji dropped; fuzzed), `Poll` with backoff, `Store` (RWMutex snapshot + version), `Brief` (screen-safe errors, never the URL), `Demo`
+- `internal/config/` — `~/.config/orb/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override
 - `internal/tui/` — Bubble Tea v2 program: ticks the sampler, renders, handles resize and keys
 - `internal/gfx/` — graphics mode: hand-drawn 5x7 font in 8x8 tiles, procedural blocks/braille, RPG-style windows (from `canvas.Windows`), animation (tween via `sys.Lerp`, title shimmer, stars), fbdev driver with validated geometry and dirty-row blits, VT control (KD_GRAPHICS, VT_PROCESS switching, raw keys, restore on every exit), PNG output
 

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/sys"
+	"orb/internal/canvas"
+	"orb/internal/sys"
 )
 
 // heat returns the theme's heat function, for passing to widgets.

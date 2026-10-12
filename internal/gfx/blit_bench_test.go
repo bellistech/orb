@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"nocterm/internal/feeds"
-	"nocterm/internal/sys"
-	"nocterm/internal/ui"
+	"orb/internal/feeds"
+	"orb/internal/sys"
+	"orb/internal/ui"
 )
 
 // Steady-state animated frames on the 3440x1440 desk monitor: render,

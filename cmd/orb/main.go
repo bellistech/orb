@@ -1,4 +1,4 @@
-// nocterm is a view-only host health dashboard for the terminal and the
+// orb is a view-only host health dashboard for the terminal and the
 // Linux console.
 package main
 
@@ -12,12 +12,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"nocterm/internal/config"
-	"nocterm/internal/feeds"
-	"nocterm/internal/gfx"
-	"nocterm/internal/sys"
-	"nocterm/internal/tui"
-	"nocterm/internal/ui"
+	"orb/internal/config"
+	"orb/internal/feeds"
+	"orb/internal/gfx"
+	"orb/internal/sys"
+	"orb/internal/tui"
+	"orb/internal/ui"
 )
 
 var version = "dev"
@@ -42,13 +42,13 @@ func main() {
 	reset := flag.String("reset-console", "", "force a VT back to text mode (e.g. /dev/tty1, or \"-\" for this one) and exit")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: nocterm [flags]\n\nKeys: d dashboard, w news & weather, space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, q quit.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, q quit.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println("nocterm", version)
+		fmt.Println("orb", version)
 		return
 	}
 	if *reset != "" {
@@ -68,7 +68,7 @@ func main() {
 		fail("%v", err)
 	}
 	if warn != "" {
-		fmt.Fprintln(os.Stderr, "nocterm: warning:", warn)
+		fmt.Fprintln(os.Stderr, "orb: warning:", warn)
 	}
 	set := map[string]bool{}
 	flag.Visit(func(f *flag.Flag) { set[f.Name] = true })
@@ -128,7 +128,7 @@ func main() {
 		feedView = func() feeds.View { return dv }
 	} else if *newsURL != "" || *weatherURL != "" {
 		store := &feeds.Store{}
-		store.Start(context.Background(), feeds.NewClient("nocterm/"+version, 30*time.Second), *newsURL, *weatherURL)
+		store.Start(context.Background(), feeds.NewClient("orb/"+version, 30*time.Second), *newsURL, *weatherURL)
 		feedView = store.View
 	}
 
@@ -204,6 +204,6 @@ func runOnce(size string, gfxMode bool, scale int, v ui.View, th *ui.Theme) {
 }
 
 func fail(format string, a ...any) {
-	fmt.Fprintf(os.Stderr, "nocterm: "+format+"\n", a...)
+	fmt.Fprintf(os.Stderr, "orb: "+format+"\n", a...)
 	os.Exit(2)
 }

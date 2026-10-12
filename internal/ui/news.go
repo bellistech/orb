@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"nocterm/internal/canvas"
-	"nocterm/internal/feeds"
+	"orb/internal/canvas"
+	"orb/internal/feeds"
 )
 
 // rotateEvery is how long each page of headlines shows.
@@ -119,7 +119,7 @@ func feedStatus(in canvas.Region, t *Theme, on bool, errText, what string) {
 	switch {
 	case !on:
 		in.Text(0, 0, "no "+what+" source configured", t.Dim)
-		in.Text(0, 1, "set "+what+"_url in ~/.config/nocterm/config", t.Faint)
+		in.Text(0, 1, "set "+what+"_url in ~/.config/orb/config", t.Faint)
 	case errText != "":
 		in.Text(0, 0, what+": "+errText+", retrying", t.Temp)
 	default:
