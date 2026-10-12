@@ -78,6 +78,16 @@ staggered starts. The page lays out every frame while typing; tile diffing
 keeps a frame at ~0.15 ms. Feeds come from bellis.tech's JSON caches,
 configured in `~/.config/orb/config`.
 
+## Network page
+
+`n`. Listening sockets (TCP LISTEN, UDP unconnected) sorted by port, with
+service name, address (`*` for any) and owner; connections with state
+colored by meaning (established calm, half-closed warm, TIME-WAIT faint);
+counts by state and top peers; the interfaces panel. Sockets come from
+`/proc/net/*`, owners by matching `socket:[inode]` fd links under
+`/proc/<pid>/fd` (bounded walk, ~5 ms). The sampler reads them every 2 s,
+and only while the page asks.
+
 ## Rendering
 
 A cell canvas (rune + fg + bg per cell) with panels drawing into clipped

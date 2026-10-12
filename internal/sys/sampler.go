@@ -5,6 +5,7 @@ package sys
 
 import (
 	"sort"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,6 +43,8 @@ type Snapshot struct {
 	GPUHist [][]float64
 
 	Procs []Proc
+
+	Sockets []Socket // only while the network page asks for them
 }
 
 // Sampler takes successive readings and turns counters into rates. It is not
@@ -64,7 +67,17 @@ type Sampler struct {
 	diskW    *Ring
 	gpuHist  map[string]*Ring
 	tempHist *Ring
+
+	// WantSockets turns socket reading on; the UI sets it while the
+	// network page is up. Safe to set from any goroutine.
+	WantSockets atomic.Bool
+	sockets     []Socket
+	socketsAt   time.Time
 }
+
+// socketEvery is how often sockets are re-read while wanted: walking every
+// process's fds is the most expensive read orb does.
+const socketEvery = 2 * time.Second
 
 // NewSampler primes the counters so the first Sample has rates.
 func NewSampler() *Sampler {
@@ -183,6 +196,18 @@ func (s *Sampler) Sample() *Snapshot {
 	procs := readProcs()
 	snap.Procs = topProcs(s.procs, procs, dt, 32)
 	s.procs = procs
+
+	if s.WantSockets.Load() {
+		if s.sockets == nil || now.Sub(s.socketsAt) >= socketEvery {
+			s.sockets, s.socketsAt = ReadSockets(), now
+			if s.sockets == nil {
+				s.sockets = []Socket{}
+			}
+		}
+		snap.Sockets = s.sockets
+	} else {
+		s.sockets = nil
+	}
 	return snap
 }
 

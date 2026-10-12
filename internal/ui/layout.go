@@ -11,10 +11,11 @@ import (
 // Page is which screen is showing.
 type Page int
 
-// Pages, in key order: d and w.
+// Pages, in key order: d, w and n.
 const (
 	Dash Page = iota
 	News
+	Net
 )
 
 // View is everything a frame shows.
@@ -56,8 +57,11 @@ var memGPU = []slot{{dash(drawMem), 42, nil}, {dash(drawGPU), 58, nil}}
 
 // grid picks rows for the page and width. Weights are proportions.
 func grid(p Page, w int) []row {
-	if p == News {
+	switch p {
+	case News:
 		return newsGrid(w)
+	case Net:
+		return netGrid(w)
 	}
 	var (
 		drawCPU, drawNet, drawDisk = dash(drawCPU), dash(drawNet), dash(drawDisk)

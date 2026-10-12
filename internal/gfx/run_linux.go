@@ -26,6 +26,7 @@ type Options struct {
 	FPS      int // animation frames per second; 0 = redraw on samples only
 	Page     ui.Page
 	Feeds    func() feeds.View // may be nil
+	Sockets  func(bool)        // asks the source for sockets; may be nil
 }
 
 const tween = 600 * time.Millisecond
@@ -77,6 +78,15 @@ func Run(o Options) error {
 	}()
 
 	theme, page := o.Theme, o.Page
+	want := o.Sockets
+	if want == nil {
+		want = func(bool) {}
+	}
+	setPage := func(p ui.Page) {
+		page = p
+		want(p == ui.Net)
+	}
+	setPage(page)
 	feedView := o.Feeds
 	if feedView == nil {
 		feedView = func() feeds.View { return feeds.View{} }
@@ -159,10 +169,13 @@ func Run(o Options) error {
 				theme = (theme + 1) % len(ui.Themes)
 				redrawAll()
 			case k.Rune == 'd' || k.Rune == 'D':
-				page = ui.Dash
+				setPage(ui.Dash)
 				draw()
 			case k.Rune == 'w' || k.Rune == 'W':
-				page = ui.News
+				setPage(ui.News)
+				draw()
+			case k.Rune == 'n' || k.Rune == 'N':
+				setPage(ui.Net)
 				draw()
 			case k.Rune == ' ':
 				reader.Toggle(time.Now())

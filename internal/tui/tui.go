@@ -24,7 +24,7 @@ func frameTick() tea.Cmd {
 	return tea.Tick(frameEvery, func(time.Time) tea.Msg { return frameMsg{} })
 }
 
-// Model is the Bubble Tea model. It only displays; the keys are d and w
+// Model is the Bubble Tea model. It only displays; the keys are d, w and n
 // (pages), space (pause the news reader), arrows (previous/next story),
 // t (next theme) and q (quit).
 type Model struct {
@@ -34,6 +34,7 @@ type Model struct {
 	page     ui.Page
 	feeds    func() feeds.View
 	reader   *ui.ReaderClock // pointer: the clock outlives Model copies
+	sockets  func(bool)
 	snap     *sys.Snapshot
 	w, h     int
 }
@@ -41,11 +42,15 @@ type Model struct {
 // New returns a model sampling every interval, starting on theme and page.
 // With demo it shows synthetic data instead of the host's. feedView may be
 // nil.
-func New(interval time.Duration, theme string, page ui.Page, demo bool, feedView func() feeds.View) Model {
+func New(interval time.Duration, theme string, page ui.Page, demo bool, feedView func() feeds.View, sockets func(bool)) Model {
 	if feedView == nil {
 		feedView = func() feeds.View { return feeds.View{} }
 	}
-	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}}
+	if sockets == nil {
+		sockets = func(bool) {}
+	}
+	sockets(page == ui.Net)
+	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}, sockets: sockets}
 	if demo {
 		m.source = func() *sys.Snapshot { return sys.Demo(time.Now()) }
 	} else {
@@ -100,9 +105,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.theme = (m.theme + 1) % len(ui.Themes)
 		case "d":
 			m.page = ui.Dash
+			m.sockets(false)
+		case "n":
+			m.page = ui.Net
+			m.sockets(true)
 		case "space", " ":
 			m.reader.Toggle(time.Now())
 		case "w":
+			m.sockets(false)
 			if m.page != ui.News {
 				m.page = ui.News
 				return m, frameTick()

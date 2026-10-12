@@ -5,7 +5,7 @@ View-only host health dashboard for the terminal. Built for a big monitor across
 ```bash
 orb                     # live dashboard in the terminal
 orb -gfx                # pixel graphics on the local console (no desktop)
-orb -page news          # start on news & weather instead of the dashboard
+orb -page news          # start on news & weather (or -page net)
 orb -theme chrono       # phosphor (default), gizzard, lantern, chrono
 orb -interval 2s        # sample every 2s
 orb -demo               # synthetic data
@@ -13,7 +13,7 @@ orb -once 215x45        # print one frame and exit
 orb -gfx -once 3440x1440 > frame.png
 ```
 
-Keys: `d` dashboard, `w` news & weather, `space` pause/resume the news reader,
+Keys: `d` dashboard, `w` news & weather, `n` network, `space` pause/resume the news reader,
 `↑`/`←` previous story, `↓`/`→` next story, `t` next theme, `q` quit.
 
 ## Configuration
@@ -24,7 +24,7 @@ URLs may be private.
 
 ```
 theme = phosphor            # phosphor, gizzard, lantern, chrono
-page = dash                 # dash or news
+page = dash                 # dash, news or net
 interval = 1s
 scale = 4                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation
@@ -87,6 +87,14 @@ story at a time like an RPG dialog box: headline, then the summary typed out
 at 40 characters a second, a 5 second pause after each page, a blinking ▼ when another follows.
 Stories come in a random order, reshuffled with each news fetch. Summaries come only from the feed's own `description`
 field; orb never fetches the articles.
+
+Network page (`n`): listening sockets with port, service name (from
+`/etc/services`), address and owning process, like `ss -tulpn`; active
+connections with state, local and peer address and process; socket counts
+by state with the top peers; interfaces with addresses and throughput. Read
+from `/proc/net/{tcp,tcp6,udp,udp6}` and `/proc/<pid>/fd` every 2 seconds,
+only while the page is up. Owning processes of other users show as `-`
+unless orb runs as root, as with `ss -p`. No DNS lookups.
 
 Layout adapts to the size: two rows of three columns at 180+ cells wide, three rows of two at 100+, a single stack below that.
 

@@ -2,6 +2,7 @@ package sys
 
 import (
 	"math"
+	"net/netip"
 	"time"
 )
 
@@ -85,6 +86,29 @@ func Demo(now time.Time) *Snapshot {
 		{Card: "card0", Busy: 0.04, GTTUsed: gib, GTTTotal: 7 * gib, PowerW: 12, SclkMHz: 600, TempC: 44},
 	}
 	s.GPUHist = [][]float64{g, hist(7, 30, 0, 0.1)}
+	ap := netip.MustParseAddrPort
+	sock := func(proto, local, remote, state string, pid int, proc string) Socket {
+		return Socket{Proto: proto, Local: ap(local), Remote: ap(remote), State: state, PID: pid, Proc: proc}
+	}
+	s.Sockets = []Socket{
+		sock("tcp", "0.0.0.0:22", "0.0.0.0:0", "LISTEN", 1873, "sshd"),
+		sock("udp", "0.0.0.0:53", "0.0.0.0:0", "UNCONN", 812, "unbound"),
+		sock("tcp", "192.168.13.2:80", "0.0.0.0:0", "LISTEN", 2088, "haproxy"),
+		sock("tcp", "0.0.0.0:179", "0.0.0.0:0", "LISTEN", 1550, "bird"),
+		sock("tcp", "192.168.13.2:443", "0.0.0.0:0", "LISTEN", 2088, "haproxy"),
+		sock("tcp", "127.0.0.1:5432", "0.0.0.0:0", "LISTEN", 1990, "postgres"),
+		sock("tcp6", "[::1]:9090", "[::]:0", "LISTEN", 0, ""),
+		sock("udp", "10.66.0.1:51820", "0.0.0.0:0", "UNCONN", 0, ""),
+		sock("tcp", "192.168.13.2:22", "192.168.1.50:51234", "ESTAB", 5367, "sshd"),
+		sock("tcp", "192.168.13.2:443", "203.0.113.7:40112", "ESTAB", 2088, "haproxy"),
+		sock("tcp", "192.168.13.2:443", "203.0.113.9:40990", "ESTAB", 2088, "haproxy"),
+		sock("tcp", "192.168.13.2:443", "198.51.100.23:51002", "TIME-WAIT", 0, ""),
+		sock("tcp", "192.168.13.2:179", "192.168.13.1:179", "ESTAB", 1550, "bird"),
+		sock("tcp", "127.0.0.1:43122", "127.0.0.1:5432", "ESTAB", 2604, "wotan"),
+		sock("tcp", "192.168.13.2:52210", "145.239.84.23:443", "ESTAB", 5367, "orb"),
+		sock("tcp", "192.168.13.2:60122", "140.82.112.4:443", "CLOSE-WAIT", 4980, "fwupd"),
+		sock("tcp6", "[2001:db8::20]:443", "[2001:db8::99]:61000", "ESTAB", 2088, "haproxy"),
+	}
 	names := []string{"llama-server", "go", "rustc", "postgres", "prometheus", "haproxy", "dockerd", "wotan", "sshd", "systemd-journal"}
 	for i, n := range names {
 		s.Procs = append(s.Procs, Proc{PID: 1200 + i*331, Name: n, CPU: 3.4 / float64(i+1) * (0.6 + 0.4*s.CPU), RSS: uint64(9-i) * gib / 3})
