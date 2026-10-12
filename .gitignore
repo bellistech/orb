@@ -1,0 +1,7 @@
+/nocterm
+*.png
+*.swp
+*~
+.vscode/
+.idea/
+.env
