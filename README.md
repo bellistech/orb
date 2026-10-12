@@ -83,8 +83,8 @@ News & weather page (`w`): current conditions with animated weather art,
 hourly temperature curve, five-day range bars, six headline windows that
 rotate every 15 seconds, and below them a reader that tells one
 story at a time like an RPG dialog box: headline, then the summary typed out
-at 40 characters a second, a blinking ▼ when another page follows. Stories alternate
-between categories, newest first. Summaries come only from the feed's own `description`
+at 40 characters a second, a 5 second pause after each page, a blinking ▼ when another follows.
+Stories come in a random order, reshuffled with each news fetch. Summaries come only from the feed's own `description`
 field; nocterm never fetches the articles.
 
 Layout adapts to the size: two rows of three columns at 180+ cells wide, three rows of two at 100+, a single stack below that.

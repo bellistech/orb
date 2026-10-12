@@ -60,11 +60,11 @@ a heat-colored curve over temperatures, mini icons and hours, and a five-day
 forecast with range bars on a shared min..max track. Temperatures use the
 heat ramp from 20°F (cool) to 105°F (hot).
 
-On the right, six headline windows on top and the reader below: one story at a time, categories interleaved
-newest first, only items whose feed description holds a real summary (80+
+On the right, six headline windows on top and the reader below: one story at a time in a random order
+(seeded by the fetch, so stable between frames), only items whose feed description holds a real summary (80+
 characters after stripping HTML and boilerplate). The headline shows for
 1.5 s, then the body types at 40 characters/s into
-lines of at most 72 characters; each typed page holds 4 s, with a blinking
+lines of at most 72 characters; each typed page holds 5 s, with a blinking
 ▼ when another follows. The schedule is a pure function of time since the
 news was fetched, so every frame is computable without state. The headline
 windows show one line per headline, pages rotating every 15 s with
