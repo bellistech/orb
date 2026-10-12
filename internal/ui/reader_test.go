@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -8,20 +9,40 @@ import (
 	"nocterm/internal/feeds"
 )
 
-func TestStoriesInterleaveAndSkipEmpty(t *testing.T) {
+func TestStoriesShuffledAndSkipEmpty(t *testing.T) {
+	var items []feeds.Item
+	for i := range 30 {
+		items = append(items, feeds.Item{Title: fmt.Sprint(i), Summary: "x"})
+	}
 	n := &feeds.News{Categories: []feeds.Category{
-		{Name: "A", Items: []feeds.Item{{Title: "a1", Summary: "x"}, {Title: "a2"}, {Title: "a3", Summary: "x"}}},
-		{Name: "B", Items: []feeds.Item{{Title: "b1"}}},
-		{Name: "C", Items: []feeds.Item{{Title: "c1", Summary: "x"}, {Title: "c2", Summary: "x"}}},
+		{Name: "A", Items: items},
+		{Name: "B", Items: []feeds.Item{{Title: "no summary"}}},
 	}}
-	var got []string
-	for _, s := range stories(n) {
-		got = append(got, s.item.Title)
+	order := func(seed uint64) string {
+		var got []string
+		for _, s := range stories(n, seed) {
+			got = append(got, s.item.Title)
+		}
+		return strings.Join(got, ",")
 	}
-	if strings.Join(got, ",") != "a1,c1,a3,c2" {
-		t.Fatalf("order = %v", got)
+	a, b := order(1), order(2)
+	if a != order(1) {
+		t.Fatal("same seed gave a different order")
 	}
-	if stories(nil) != nil {
+	if a == b {
+		t.Fatal("different seeds gave the same order")
+	}
+	if strings.Contains(a, "no summary") || len(strings.Split(a, ",")) != 30 {
+		t.Fatalf("wrong set: %s", a)
+	}
+	var natural []string
+	for i := range 30 {
+		natural = append(natural, fmt.Sprint(i))
+	}
+	if a == strings.Join(natural, ",") {
+		t.Fatal("order not shuffled")
+	}
+	if stories(nil, 1) != nil {
 		t.Fatal("nil news")
 	}
 }

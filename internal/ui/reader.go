@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +16,7 @@ import (
 const (
 	typeRate    = 40 // characters per second
 	readerIntro = 1500 * time.Millisecond
-	readerHold  = 4 * time.Second
+	readerHold  = 5 * time.Second // pause once a page is fully typed
 	maxStories  = 48
 	readerWidth = 72 // comfortable line length for reading
 )
@@ -25,33 +26,23 @@ type story struct {
 	item feeds.Item
 }
 
-// stories interleaves categories newest first, skipping items with no
-// summary, so consecutive stories come from different categories.
-func stories(n *feeds.News) []story {
+// stories returns every item that has a summary, in a random order seeded
+// by seed (the fetch time), so the order is stable between frames and
+// reshuffles when new news arrives.
+func stories(n *feeds.News, seed uint64) []story {
 	if n == nil {
 		return nil
 	}
 	var out []story
-	for depth := 0; len(out) < maxStories; depth++ {
-		added := false
-		for ci, c := range n.Categories {
-			found := 0
-			for _, it := range c.Items {
-				if it.Summary == "" {
-					continue
-				}
-				if found == depth {
-					out = append(out, story{ci, it})
-					added = true
-					break
-				}
-				found++
+	for ci, c := range n.Categories {
+		for _, it := range c.Items {
+			if it.Summary != "" {
+				out = append(out, story{ci, it})
 			}
 		}
-		if !added {
-			break
-		}
 	}
+	rng := rand.New(rand.NewPCG(seed, 0x6e6f637465726d)) // "nocterm"
+	rng.Shuffle(len(out), func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out[:min(len(out), maxStories)]
 }
 
@@ -112,7 +103,7 @@ func cachedPlan(n *feeds.News, w, h int) ([]readerPlan, time.Duration) {
 	readerCache.Lock()
 	defer readerCache.Unlock()
 	if readerCache.news != n || readerCache.w != w || readerCache.h != h {
-		readerCache.plans, readerCache.total = planReader(stories(n), w, h)
+		readerCache.plans, readerCache.total = planReader(stories(n, uint64(n.Generated.UnixNano())), w, h)
 		readerCache.news, readerCache.w, readerCache.h = n, w, h
 	}
 	return readerCache.plans, readerCache.total
