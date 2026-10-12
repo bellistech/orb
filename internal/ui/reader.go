@@ -153,9 +153,16 @@ func drawReader(r canvas.Region, v *View, t *Theme) {
 		feedStatus(in, t, v.Feeds.NewsOn, v.Feeds.NewsErr, "news")
 		return
 	}
-	// Body geometry: below a two-line headline, a meta line and a gap.
-	bw := min(r.W-4, readerWidth)
-	bh := r.H - 2 - 4
+	// Graphics tiles draw the reader at double size; terminals cannot.
+	sc := 1
+	if r.Square() {
+		sc = 2
+	}
+	// Body geometry in characters: below a two-line headline, a meta
+	// line and a gap.
+	headRows := 2 * sc
+	bw := min((r.W-4)/sc, readerWidth)
+	bh := (r.H - 2 - headRows - 2) / sc
 	if bw < 10 || bh < 1 {
 		Frame(r, t, "Reader", "", t.Host)
 		return
@@ -185,27 +192,46 @@ func drawReader(r canvas.Region, v *View, t *Theme) {
 	if in.Empty() {
 		return
 	}
-	x0 := (in.W - bw) / 2
+	x0 := (in.W - bw*sc) / 2
+	put := func(y int, s string, fg canvas.Color, bold bool) {
+		switch {
+		case sc == 2:
+			in.Double(x0, y, s, fg, bold)
+		case bold:
+			in.Bold(x0, y, s, fg)
+		default:
+			in.Text(x0, y, s, fg)
+		}
+	}
 
 	for i, l := range p.head {
-		in.Bold(x0, i, l, t.FG)
+		put(i*sc, l, t.FG, true)
 	}
 	age, ageCol := ageOf(p.story.item.Published, v.Now, t, accent)
-	mx := in.Bold(x0, 2, age, ageCol)
-	in.Text(mx+1, 2, "· "+p.story.item.Feed, t.Dim)
+	mx := in.Bold(x0, headRows, age, ageCol)
+	in.Text(mx+1, headRows, "· "+p.story.item.Feed, t.Dim)
 
 	left := pos.shown
 	for i, l := range p.pages[pos.page].lines {
 		if left <= 0 {
 			break
 		}
-		in.Text(x0, 4+i, l[:min(len(l), left)], t.FG)
+		put(headRows+2+i*sc, l[:min(len(l), left)], t.FG, false)
 		left -= len(l)
 	}
 	// The RPG "more" prompt: blinks once a page is typed and more follow.
 	if pos.typed && pos.page < len(p.pages)-1 && v.Now.UnixMilli()/500%2 == 0 {
-		in.Set(x0+bw-1, in.H-1, '▼', accent)
+		in.Set(x0+bw*sc-1, in.H-1, '▼', accent)
 	}
+}
+
+// start returns when story i begins within the cycle.
+func start(plans []readerPlan, i int) time.Duration {
+	var d time.Duration
+	for _, p := range plans[:i] {
+		d += p.dur
+	}
+	return d
 }
 
 // wrapAll wraps s to width w with no line limit; words longer than w are
@@ -261,6 +287,40 @@ func (c *ReaderClock) Toggle(now time.Time) {
 		return
 	}
 	c.paused, c.pausedAt = true, now
+}
+
+// Skip jumps delta stories (negative goes back) from the one showing at
+// now, to the start of that story, and resumes if paused: landing on a
+// paused story would show only its headline. It uses the plan of the most
+// recent frame; before any frame it does nothing.
+func (c *ReaderClock) Skip(delta int, now time.Time) {
+	readerCache.Lock()
+	plans, total := readerCache.plans, readerCache.total
+	news := readerCache.news
+	readerCache.Unlock()
+	if len(plans) == 0 || total <= 0 || news != c.news {
+		return
+	}
+	if c.paused {
+		c.Toggle(now)
+	}
+	el := now.Sub(c.newsAt) - c.offset
+	cyc := el % total
+	if cyc < 0 {
+		cyc += total
+	}
+	cur := locate(plans, total, el).plan
+	next := ((cur+delta)%len(plans) + len(plans)) % len(plans)
+	target := el - cyc + start(plans, next)
+	// Going forward past the last story wraps into the next cycle, and
+	// back from the first into the previous one, so time moves the
+	// expected way.
+	if delta > 0 && next <= cur {
+		target += total
+	} else if delta < 0 && next >= cur {
+		target -= total
+	}
+	c.offset += el - target
 }
 
 // Paused reports whether the reader is paused.

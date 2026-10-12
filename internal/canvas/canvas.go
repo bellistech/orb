@@ -35,6 +35,11 @@ type Cell struct {
 	FG   Color
 	BG   Color
 	Bold bool
+	// Quad is non-zero for a double-size glyph spread over 2x2 cells:
+	// 1 top-left, 2 top-right, 3 bottom-left, 4 bottom-right. Each cell
+	// holds the same rune; a pixel backend draws its quarter. Terminals
+	// show the rune in quadrant 1 and blanks elsewhere.
+	Quad uint8
 }
 
 // Canvas is a W x H grid of cells.
@@ -108,15 +113,29 @@ func (r Region) at(x, y int) *Cell {
 // Set draws ch with fg at (x, y), keeping the existing background.
 func (r Region) Set(x, y int, ch rune, fg Color) {
 	if cell := r.at(x, y); cell != nil {
-		cell.Ch, cell.FG, cell.Bold = ch, fg, false
+		cell.Ch, cell.FG, cell.Bold, cell.Quad = ch, fg, false, 0
 	}
 }
 
 // SetBold is Set with bold.
 func (r Region) SetBold(x, y int, ch rune, fg Color) {
 	if cell := r.at(x, y); cell != nil {
-		cell.Ch, cell.FG, cell.Bold = ch, fg, true
+		cell.Ch, cell.FG, cell.Bold, cell.Quad = ch, fg, true, 0
 	}
+}
+
+// Double writes s at twice the size, each rune covering 2x2 cells, and
+// returns the column after it. Meant for square (graphics) canvases.
+func (r Region) Double(x, y int, s string, fg Color, bold bool) int {
+	for _, ch := range s {
+		for q := range uint8(4) {
+			if cell := r.at(x+int(q%2), y+int(q/2)); cell != nil {
+				cell.Ch, cell.FG, cell.Bold, cell.Quad = ch, fg, bold, q+1
+			}
+		}
+		x += 2
+	}
+	return x
 }
 
 // SetBG paints the background of (x, y).
@@ -166,7 +185,7 @@ func (c *Canvas) String() string {
 				writeSGR(&b, cell)
 				cur, first = cell, false
 			}
-			b.WriteRune(cell.Ch)
+			b.WriteRune(termRune(cell))
 		}
 		b.WriteString("\x1b[0m")
 		if y < c.H-1 {
@@ -205,7 +224,7 @@ func (c *Canvas) Plain() string {
 	var b strings.Builder
 	for y := 0; y < c.H; y++ {
 		for x := 0; x < c.W; x++ {
-			b.WriteRune(c.cells[y*c.W+x].Ch)
+			b.WriteRune(termRune(c.cells[y*c.W+x]))
 		}
 		if y < c.H-1 {
 			b.WriteByte('\n')
@@ -226,4 +245,12 @@ func (c *Canvas) CellAt(x, y int) Cell {
 func (r Region) Set2(x, y int, ch rune, fg Color) int {
 	r.Set(x, y, ch, fg)
 	return x + 1
+}
+
+// termRune is what a terminal shows for a cell.
+func termRune(c Cell) rune {
+	if c.Quad > 1 {
+		return ' '
+	}
+	return c.Ch
 }

@@ -333,12 +333,48 @@ func drawCell(f *Frame, cx, cy int, cell canvas.Cell, t *ui.Theme, glow float64)
 		}
 	}
 	shadow := ui.Mix(fg, canvas.RGB(0, 0, 0), 0.75)
+	if cell.Quad != 0 {
+		g = quarter(g, cell.Quad)
+		sh := quarter(shift(font[cell.Ch], cell.Bold), cell.Quad)
+		blit(f, x0, y0, sh, rgb(shadow))
+		blit(f, x0, y0, g, rgb(fg))
+		return
+	}
+	blit(f, x0, y0, shift(g, false), rgb(shadow))
+	blit(f, x0, y0, g, rgb(fg))
+}
+
+// shift returns g's drop shadow: the glyph moved one pixel down and right
+// (bolded first when bold, matching the glyph it shadows).
+func shift(g glyph, bold bool) glyph {
+	if bold {
+		for y := range g {
+			g[y] |= g[y] >> 1
+		}
+	}
 	var sh glyph
 	for y := 1; y < Tile; y++ {
 		sh[y] = g[y-1] >> 1
 	}
-	blit(f, x0, y0, sh, rgb(shadow))
-	blit(f, x0, y0, g, rgb(fg))
+	return sh
+}
+
+// quarter returns quadrant q (1..4) of g scaled up 2x.
+func quarter(g glyph, q uint8) glyph {
+	var out glyph
+	if q < 1 || q > 4 {
+		return out
+	}
+	ox, oy := int(q-1)%2*Tile/2, int(q-1)/2*Tile/2 // source offset in pixels
+	for y := range Tile {
+		src := g[oy+y/2]
+		for x := range Tile {
+			if src&(0x80>>(ox+x/2)) != 0 {
+				out[y] |= 0x80 >> x
+			}
+		}
+	}
+	return out
 }
 
 func blit(f *Frame, x0, y0 int, g glyph, v uint32) {

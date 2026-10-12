@@ -42,7 +42,7 @@ func main() {
 	reset := flag.String("reset-console", "", "force a VT back to text mode (e.g. /dev/tty1, or \"-\" for this one) and exit")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: nocterm [flags]\n\nKeys: d dashboard, w news & weather, space pause/resume the news reader, t next theme, q quit.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "usage: nocterm [flags]\n\nKeys: d dashboard, w news & weather, space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, q quit.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
