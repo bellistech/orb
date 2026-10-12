@@ -4,6 +4,7 @@
 package sys
 
 import (
+	"os"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -45,6 +46,10 @@ type Snapshot struct {
 	Procs []Proc
 
 	Sockets []Socket // only while the network page asks for them
+	// AllOwners is true when owners of every user's sockets are visible
+	// (root, or the privileged helper); sockets still without an owner
+	// then belong to no process (kernel, or closing).
+	AllOwners bool
 }
 
 // Sampler takes successive readings and turns counters into rates. It is not
@@ -72,8 +77,9 @@ type Sampler struct {
 	// network page is up. Safe to set from any goroutine.
 	WantSockets atomic.Bool
 	// Owners finds socket owners; nil scans /proc directly. Set before
-	// the first Sample.
+	// the first Sample. AllOwners says it sees every user's processes.
 	Owners    OwnerFunc
+	AllOwners bool
 	sockets   []Socket
 	socketsAt time.Time
 }
@@ -208,6 +214,7 @@ func (s *Sampler) Sample() *Snapshot {
 			}
 		}
 		snap.Sockets = s.sockets
+		snap.AllOwners = s.AllOwners || os.Geteuid() == 0
 	} else {
 		s.sockets = nil
 	}

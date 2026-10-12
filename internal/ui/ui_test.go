@@ -145,3 +145,17 @@ func TestHourLabel(t *testing.T) {
 		}
 	}
 }
+
+// The "not root" hint only appears when orb cannot see other users'
+// processes; with full visibility, owner-less sockets are kernel-owned.
+func TestListenHiddenOwnerHint(t *testing.T) {
+	socks := []sys.Socket{{Proto: "udp", State: "UNCONN"}} // no owner, e.g. WireGuard
+	for _, all := range []bool{false, true} {
+		s := sys.Demo(time.Unix(1_800_000_000, 0))
+		s.Sockets, s.AllOwners = socks, all
+		got := strings.Contains(Render(215, 45, View{Page: Net, Snap: s}, Themes[0], false).Plain(), "not root")
+		if got == all {
+			t.Errorf("AllOwners=%v: hint shown=%v", all, got)
+		}
+	}
+}

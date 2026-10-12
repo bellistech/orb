@@ -87,7 +87,7 @@ func drawListen(r canvas.Region, v *View, t *Theme) {
 		}
 	}
 	sub := fmt.Sprintf("%d sockets", len(ls))
-	if hidden {
+	if hidden && !v.Snap.AllOwners {
 		sub += " · some owners hidden (not root)"
 	}
 	in := Frame(r, t, "Listening", sub, t.CPU)

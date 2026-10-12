@@ -57,6 +57,7 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 - The news URL is private: it lives only in the user's config file, never in the repo, docs, tests or on screen
 - Never fetch article pages or anything beyond the two configured JSON feeds; summaries come from the feed's `description` only
 - Exactly one sample in flight; the next tick is scheduled when a sample lands
+- One sampler, built in main and handed to both front ends (`tui.New` and `gfx.Run` take its source): socket demand and the root helper hang off it
 - New panels: a `drawFn` in `internal/ui/` (dashboard panels wrap with `dash()`), a slot in `grid()`/`newsGrid()` per breakpoint, demo data in `sys.Demo` / `feeds.Demo`
 - `TestRenderAnySize` must stay green: every panel draws into any box and clips
 - Check visuals with `-once` at 215x45 (desk), 120x40, 80x60, and `-gfx -once 3440x1440 > f.png`, before calling a UI change done
