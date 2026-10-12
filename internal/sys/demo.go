@@ -49,8 +49,8 @@ func Demo(now time.Time) *Snapshot {
 	s.NetRx = hist(2, 7, 2e5, 9e7)
 	s.NetTx = hist(4, 11, 5e4, 2.2e7)
 	s.Net = []NetIf{
-		{Name: "enp16s0", Up: true, RxRate: last(s.NetRx) * 0.9, TxRate: last(s.NetTx) * 0.8},
-		{Name: "wg0", Up: true, RxRate: last(s.NetRx) * 0.1, TxRate: last(s.NetTx) * 0.2},
+		{Name: "enp16s0", Up: true, RxRate: last(s.NetRx) * 0.9, TxRate: last(s.NetTx) * 0.8, Addrs: []string{"192.168.1.20", "2001:db8::20"}},
+		{Name: "wg0", Up: true, RxRate: last(s.NetRx) * 0.1, TxRate: last(s.NetTx) * 0.2, Addrs: []string{"10.66.0.1"}},
 		{Name: "wlp17s0", Up: false},
 	}
 	s.DiskRead = hist(3, 5, 0, 4.2e8)
@@ -75,6 +75,10 @@ func Demo(now time.Time) *Snapshot {
 		{Chip: "dimm", Celsius: 41},
 	}
 	s.Fans = []Fan{{Chip: "gpu", RPM: 1480}}
+	s.TempHist = make([]float64, History)
+	for i, v := range s.CPUHist {
+		s.TempHist[i] = 40 + 50*v
+	}
 	g := hist(6, 6, 0.1, 0.98)
 	s.GPUs = []GPU{
 		{Card: "card1", Discrete: true, Busy: last(g), VRAMUsed: 9 * gib, VRAMTotal: 12 * gib, PowerW: 40 + 180*last(g), SclkMHz: 2450, TempC: 58},

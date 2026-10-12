@@ -73,7 +73,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the current snapshot full-screen.
 func (m Model) View() tea.View {
 	t := ui.Themes[m.theme]
-	v := tea.NewView(ui.Render(m.w, m.h, m.snap, t).String())
+	v := tea.NewView(ui.Render(m.w, m.h, m.snap, t, false).String())
 	v.AltScreen = true
 	v.WindowTitle = "nocterm"
 	v.BackgroundColor = rgba(t.BG)

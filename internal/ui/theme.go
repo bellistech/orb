@@ -21,6 +21,9 @@ type Theme struct {
 
 	Host, CPU, Mem, GPU, Net, Disk, Temp, Proc canvas.Color
 
+	// Graphics-mode windows; unset means derived (see Window).
+	WinTop, WinBottom, Edge canvas.Color
+
 	ramp []canvas.Color // pre-blended, rampSteps entries
 }
 
@@ -30,6 +33,14 @@ func h(s string) canvas.Color { return canvas.Hex(s) }
 
 // Themes in cycle order; the first is the default.
 var Themes = []*Theme{
+	newTheme(Theme{
+		Name: "phosphor",
+		BG:   h("#0a0702"), Panel: h("#100b03"), Track: h("#2a1f09"),
+		FG: h("#ffcc66"), Dim: h("#b38a3d"), Faint: h("#5a4318"),
+		RX: h("#ffd080"), TX: h("#ff9a3d"),
+		Host: h("#ffd27f"), CPU: h("#ffb000"), Mem: h("#ffc040"), GPU: h("#ffa040"),
+		Net: h("#ffd080"), Disk: h("#e6a020"), Temp: h("#ff8040"), Proc: h("#ffcc66"),
+	}, "#7a5a1a", "#c98f1e", "#ffb000", "#ff7a1a", "#ff3d1a"),
 	newTheme(Theme{
 		Name: "gizzard",
 		BG:   h("#0b0812"), Panel: h("#110c1b"), Track: h("#221a33"),
@@ -47,13 +58,14 @@ var Themes = []*Theme{
 		Net: h("#a6e3a1"), Disk: h("#f9e2af"), Temp: h("#f38ba8"), Proc: h("#74c7ec"),
 	}, "#89dceb", "#a6e3a1", "#f9e2af", "#fab387", "#f38ba8"),
 	newTheme(Theme{
-		Name: "phosphor",
-		BG:   h("#0a0702"), Panel: h("#100b03"), Track: h("#2a1f09"),
-		FG: h("#ffcc66"), Dim: h("#b38a3d"), Faint: h("#5a4318"),
-		RX: h("#ffd080"), TX: h("#ff9a3d"),
-		Host: h("#ffd27f"), CPU: h("#ffb000"), Mem: h("#ffc040"), GPU: h("#ffa040"),
-		Net: h("#ffd080"), Disk: h("#e6a020"), Temp: h("#ff8040"), Proc: h("#ffcc66"),
-	}, "#7a5a1a", "#c98f1e", "#ffb000", "#ff7a1a", "#ff3d1a"),
+		Name: "chrono",
+		BG:   h("#04051a"), Panel: h("#101b6e"), Track: h("#0a0f45"),
+		FG: h("#ffffff"), Dim: h("#b8c4ff"), Faint: h("#6a78c8"),
+		RX: h("#7dffb0"), TX: h("#ff8fd8"),
+		Host: h("#ffe066"), CPU: h("#5ce1ff"), Mem: h("#ff8fd8"), GPU: h("#c3a6ff"),
+		Net: h("#7dffb0"), Disk: h("#ffc04d"), Temp: h("#ff6b6b"), Proc: h("#8fc8ff"),
+		WinTop: h("#3b4fc4"), WinBottom: h("#0b1150"), Edge: h("#eef0ff"),
+	}, "#5ce1ff", "#7dffb0", "#ffe066", "#ff9a3d", "#ff4d6d"),
 }
 
 // ThemeByName returns the named theme, or nil.
@@ -94,4 +106,21 @@ func Mix(a, b canvas.Color, t float64) canvas.Color {
 	cb := colorful.Color{R: float64(b.R) / 255, G: float64(b.G) / 255, B: float64(b.B) / 255}
 	r, g, bl := ca.BlendOkLab(cb, t).Clamped().RGB255()
 	return canvas.RGB(r, g, bl)
+}
+
+// Window returns the gradient top, gradient bottom and bevel colors for a
+// graphics-mode window with the given accent. Themes may set them
+// explicitly; otherwise they are derived from the panel color and accent.
+func (t *Theme) Window(accent canvas.Color) (top, bottom, edge canvas.Color) {
+	top, bottom, edge = t.WinTop, t.WinBottom, t.Edge
+	if !top.Set {
+		top = Mix(t.Panel, accent, 0.16)
+	}
+	if !bottom.Set {
+		bottom = Mix(t.Panel, t.BG, 0.6)
+	}
+	if !edge.Set {
+		edge = Mix(t.FG, accent, 0.35)
+	}
+	return top, bottom, edge
 }
