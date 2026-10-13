@@ -44,6 +44,7 @@ Rendering is decoupled from output: `ui.Render` returns a canvas; `tui` turns it
 ## Conventions
 
 - Go 1.27.2 (toolchain pinned in `go.mod`); compile against latest
+- License GPL-3.0-or-later (`LICENSE`); no per-file license headers
 - Deps: bubbletea v2, go-colorful, golang.org/x/sys. Nothing else without a reason; graphics mode is stdlib + x/sys only
 - `unsafe` only for ioctl struct pointers in `gfx/*_linux.go`; every kernel-reported size is validated (`checkLayout`) before indexing
 - No cobra (stdlib `flag`), no logging framework (stderr)
