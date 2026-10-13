@@ -72,7 +72,7 @@ sudo orb -reset-console /dev/tty1 # or from SSH; then sudo chvt 1
 ## Install
 
 ```bash
-git clone <repo> && cd orb
+git clone https://github.com/bellistech/orb.git && cd orb
 make build && sudo make install
 ```
 
@@ -119,3 +119,7 @@ make demo      # run against synthetic data
 ```
 
 Design notes: [docs/DESIGN.md](docs/DESIGN.md). Decisions: [docs/adr/](docs/adr/).
+
+## License
+
+Copyright (C) 2026 Stevie Bellis. GPL-3.0-or-later; see [LICENSE](LICENSE).
