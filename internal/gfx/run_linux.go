@@ -27,6 +27,7 @@ type Options struct {
 	Page     ui.Page
 	Feeds    func() feeds.View // may be nil
 	OnPage   func(ui.Page)     // told every page shown (socket/link demand); may be nil
+	Attract  bool              // start with attract mode armed
 	// AfterOpen runs once the framebuffer and console are open, before
 	// the first frame: where a root process drops privileges. tookVT says
 	// whether restoring the console will need CAP_SYS_TTY_CONFIG.
@@ -109,6 +110,7 @@ func Run(o Options) error {
 	var c *canvasCache
 	active := true
 	fb.Clear(rgb(ui.Themes[theme].BG))
+	attract := ui.NewAttract(o.Attract)
 
 	// draw is called every animation tick. It re-lays out the dashboard
 	// only when something it shows changed (a tween in progress, the
@@ -124,11 +126,12 @@ func Run(o Options) error {
 		fv := feedView()
 		// The news page types text continuously, so it lays out every
 		// frame; tile diffing keeps that to the characters that appeared.
-		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != theme || c.page != page || c.feeds != fv.Version {
+		as := attract.State()
+		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != theme || c.page != page || c.feeds != fv.Version || c.attract != as {
 			snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
-			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now}
+			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now, Attract: as}
 			reader.Apply(&v)
-			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), theme, page, fv.Version}
+			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), theme, page, fv.Version, as}
 		}
 		a := Anim{}
 		if o.FPS > 0 {
@@ -142,6 +145,12 @@ func Run(o Options) error {
 		r, c = NewRenderer(), nil
 		fb.Clear(rgb(ui.Themes[theme].BG))
 		draw()
+	}
+	// step moves attract mode's cycle on, on every tick.
+	step := func() {
+		if p, ok := attract.Step(time.Now(), page); ok {
+			setPage(p)
+		}
 	}
 
 	sample := time.NewTicker(o.Interval)
@@ -158,14 +167,18 @@ func Run(o Options) error {
 		case <-sample.C:
 			prev, cur, sampled = cur, o.Source(), time.Now()
 			if o.FPS == 0 {
+				step()
 				draw()
 			}
 		case <-tick:
+			step()
 			draw()
 		case k, ok := <-keys:
 			if !ok {
 				return errors.New("keyboard closed")
 			}
+			// Any key stops attract mode's cycle, then does its usual job.
+			attract.Key(time.Now())
 			switch {
 			case k.Code == KeyUp || k.Code == KeyLeft:
 				reader.Skip(-1, time.Now())
@@ -193,6 +206,9 @@ func Run(o Options) error {
 			case k.Rune == ' ':
 				reader.Toggle(time.Now())
 				draw()
+			case k.Rune == 'i' || k.Rune == 'I':
+				attract.Toggle(time.Now())
+				draw()
 			}
 		case s := <-sigs:
 			switch s {
@@ -215,9 +231,10 @@ func Run(o Options) error {
 }
 
 type canvasCache struct {
-	canvas *canvas.Canvas
-	sec    int64
-	theme  int
-	page   ui.Page
-	feeds  uint64
+	canvas  *canvas.Canvas
+	sec     int64
+	theme   int
+	page    ui.Page
+	feeds   uint64
+	attract ui.AttractState
 }

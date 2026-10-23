@@ -13,6 +13,7 @@ orb -page news          # start on news & weather (or -page net, -page links)
 orb -theme arcane       # phosphor, gizzard (default), lantern, chrono, arcane, crimson
 orb -interval 2s        # sample every 2s
 orb -demo               # synthetic data
+orb -attract            # cycle the pages after 30s without a key (or press i)
 orb -once 215x45        # print one frame and exit
 orb -gfx -once 3440x1440 > frame.png
 ```
@@ -26,7 +27,14 @@ orb -gfx -once 3440x1440 > frame.png
 | `n` | Network | listening sockets, active connections, socket states, interfaces |
 | `l` | Links | interfaces as ports, bridges, LLDP neighbors, ARP/NDP, routes |
 
-`t` next theme, `space` pause/resume the news reader, `↑`/`←` previous story, `↓`/`→` next story, `q` quit.
+`t` next theme, `space` pause/resume the news reader, `↑`/`←` previous story, `↓`/`→` next story, `i` attract mode, `q` quit.
+
+Attract mode is off until `i` (or `-attract`): armed, orb waits for 30
+seconds without a key, then cycles the pages like an arcade attract screen,
+20 s on the dashboard, 45 s on news (a whole story), 15 s on network and
+links. Any key stops the cycle and does its usual job; the wait starts
+over. `i AUTO` in the header shows it armed, lit while it cycles; `i`
+again disarms it.
 
 ## Graphics mode
 
@@ -106,6 +114,7 @@ page = dash                 # dash, news, net or links
 interval = 1s
 scale = 3                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation
+attract = false             # true: start with attract mode armed
 news_url = https://example.com/news.json
 weather_url = https://example.com/weather.json
 ```

@@ -38,7 +38,7 @@ func drawHeader(r canvas.Region, v *View, t *Theme) {
 		}
 		ow++
 	}
-	drawTabs(r, v.Page, t, 2+ow)
+	drawTabs(r, v.Page, v.Attract, t, 2+ow)
 	now := v.Now
 	clock := now.Format("15:04")
 	cw := BigWidth(clock, in.Square())
@@ -511,7 +511,7 @@ func Uptime(d time.Duration) string {
 
 // drawTabs writes the page keys into the header's top border, the active
 // page lit.
-func drawTabs(r canvas.Region, p Page, t *Theme, x0 int) {
+func drawTabs(r canvas.Region, p Page, a AttractState, t *Theme, x0 int) {
 	edge := Mix(t.Host, t.BG, 0.55)
 	x := r.Text(x0, 0, " ", edge)
 	for i, tab := range []struct {
@@ -530,6 +530,19 @@ func drawTabs(r canvas.Region, p Page, t *Theme, x0 int) {
 			x = r.Text(x, 0, " ", edge)
 			x = r.Text(x, 0, tab.name, t.Faint)
 		}
+	}
+	// Attract mode, when armed: an idle tab, lit while it cycles.
+	switch a {
+	case AttractArmed:
+		x = r.Text(x, 0, "  ", edge)
+		x = r.Text(x, 0, "i", t.Dim)
+		x = r.Text(x, 0, " ", edge)
+		x = r.Text(x, 0, "AUTO", t.Faint)
+	case AttractCycling:
+		x = r.Text(x, 0, "  ", edge)
+		x = r.Bold(x, 0, "i", t.FG)
+		x = r.Text(x, 0, " ", edge)
+		x = r.Bold(x, 0, "AUTO", t.Host)
 	}
 	r.Text(x, 0, " ", edge)
 }

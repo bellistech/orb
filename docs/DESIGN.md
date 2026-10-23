@@ -116,6 +116,19 @@ hand with every length checked, fuzzed). Read every sample, only while the
 page is up; per-port history starts when it opens. LLDP comes from orb's
 own listener (ADR-0003), so only when started as root.
 
+## Attract mode
+
+`i` arms it, off by default (Stevie: so the news page stays put while
+being read). Armed, 30 s without a key starts a cycle through the pages
+like an arcade attract screen: on to the next page at once, then 20 s on
+the dashboard, 45 s on news (long enough for the reader to tell a story
+from its headline), 15 s on network and links. Any key stops the cycle,
+restarts the wait and then does its usual job; `i` disarms. Themes stay
+put: the theme is the user's choice. `ui.Attract` is a pure state machine
+fed key times and ticks (graphics frames, terminal samples), so it is
+tested on a virtual clock; the header shows `i AUTO`, faint while armed,
+lit while cycling.
+
 ## Privileges
 
 Run as root, orb splits itself (ADR-0002): a helper with only

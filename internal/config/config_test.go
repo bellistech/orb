@@ -26,6 +26,7 @@ scale=5
 fps = 30
 interval = 2s
 page = news
+attract = true
 news_url = https://example.com/n.json
 weather_url = https://example.com/w.json   # trailing comment
 `, 0o600)
@@ -34,7 +35,7 @@ weather_url = https://example.com/w.json   # trailing comment
 		t.Fatalf("err=%v warn=%q", err, warn)
 	}
 	want := Config{Theme: "chrono", Scale: 5, FPS: 30, HasFPS: true, Interval: 2 * time.Second, Page: "news",
-		NewsURL: "https://example.com/n.json", WeatherURL: "https://example.com/w.json"}
+		Attract: true, NewsURL: "https://example.com/n.json", WeatherURL: "https://example.com/w.json"}
 	if c != want {
 		t.Fatalf("got %+v\nwant %+v", c, want)
 	}
@@ -56,6 +57,7 @@ func TestLoadRejects(t *testing.T) {
 		"bad interval":  "interval = soon",
 		"tiny interval": "interval = 1ms",
 		"bad page":      "page = sports",
+		"bad attract":   "attract = 1",
 		"http news":     "news_url = http://example.com/n.json",
 		"duplicate":     "fps = 1\nfps = 2",
 		"huge":          strings.Repeat("# x\n", 20000),
@@ -77,6 +79,13 @@ func TestFPSZeroIsSet(t *testing.T) {
 	c, _, err := Load(write(t, "fps = 0\n", 0o600))
 	if err != nil || !c.HasFPS || c.FPS != 0 {
 		t.Fatalf("got %+v, %v", c, err)
+	}
+}
+
+func TestBoolKeys(t *testing.T) {
+	c, _, err := Load(write(t, "attract = false\n", 0o600))
+	if err != nil || c != (Config{}) {
+		t.Fatalf("defaults spelled out: got %+v, %v", c, err)
 	}
 }
 

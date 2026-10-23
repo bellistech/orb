@@ -29,6 +29,9 @@ type View struct {
 	// Reader, when set, positions the news reader; otherwise it runs from
 	// the time since the news was fetched.
 	Reader ReaderState
+
+	// Attract shows attract mode's state in the header.
+	Attract AttractState
 }
 
 type drawFn func(canvas.Region, *View, *Theme)

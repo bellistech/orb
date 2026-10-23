@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ func TestUsesTheGivenSourceAndSocketSwitch(t *testing.T) {
 	snap := &sys.Snapshot{Time: time.Unix(1, 0), Sockets: []sys.Socket{{Proto: "tcp", State: "LISTEN"}}}
 	source := func() *sys.Snapshot { calls++; return snap }
 	var wanted []bool
-	m := New(time.Second, "phosphor", ui.Dash, source, nil, func(p ui.Page) { wanted = append(wanted, p == ui.Net) })
+	m := New(time.Second, "phosphor", ui.Dash, source, nil, func(p ui.Page) { wanted = append(wanted, p == ui.Net) }, false)
 
 	msg := m.Init()() // first sample
 	if calls != 1 {
@@ -38,5 +39,44 @@ func TestUsesTheGivenSourceAndSocketSwitch(t *testing.T) {
 	m = next.(Model)
 	if wanted[len(wanted)-1] {
 		t.Fatal("d left socket reading on")
+	}
+}
+
+// i arms attract mode; once idle it cycles on samples; any other key stops
+// the cycle and still does its job; i again disarms.
+func TestAttractKeys(t *testing.T) {
+	snap := &sys.Snapshot{Time: time.Unix(1, 0)}
+	m := New(time.Second, "phosphor", ui.Dash, func() *sys.Snapshot { return snap }, nil, nil, false)
+	key := func(r rune) {
+		t.Helper()
+		next, _ := m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+		m = next.(Model)
+	}
+	if m.attract.State() != ui.AttractOff {
+		t.Fatal("attract on by default")
+	}
+	key('i')
+	if m.attract.State() != ui.AttractArmed {
+		t.Fatalf("i: state %v", m.attract.State())
+	}
+	m.w, m.h = 215, 45
+	next, _ := m.Update(sampleMsg(snap))
+	m = next.(Model)
+	if !strings.Contains(m.View().Content, "AUTO") {
+		t.Fatal("no indicator while armed")
+	}
+	m.attract.Key(time.Now().Add(-time.Minute)) // a minute without keys
+	next, cmd := m.Update(sampleMsg(snap))
+	m = next.(Model)
+	if m.page != ui.News || m.attract.State() != ui.AttractCycling || cmd == nil {
+		t.Fatalf("idle: page %v state %v", m.page, m.attract.State())
+	}
+	key('n')
+	if m.page != ui.Net || m.attract.State() != ui.AttractArmed {
+		t.Fatalf("n while cycling: page %v state %v", m.page, m.attract.State())
+	}
+	key('i')
+	if m.attract.State() != ui.AttractOff || m.page != ui.Net {
+		t.Fatalf("i again: page %v state %v", m.page, m.attract.State())
 	}
 }

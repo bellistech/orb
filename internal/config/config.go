@@ -28,6 +28,7 @@ type Config struct {
 	Page       string
 	NewsURL    string
 	WeatherURL string
+	Attract    bool // attract = true: armed from the start
 }
 
 const maxSize = 64 << 10
@@ -145,6 +146,8 @@ func (c *Config) set(key, val string) error {
 			return errors.New("page must be dash, news, net or links")
 		}
 		c.Page = val
+	case "attract":
+		c.Attract, err = boolean(val)
 	case "news_url":
 		c.NewsURL, err = val, feeds.CheckURL(val)
 	case "weather_url":
@@ -153,6 +156,16 @@ func (c *Config) set(key, val string) error {
 		return fmt.Errorf("unknown key %q", key)
 	}
 	return err
+}
+
+func boolean(s string) (bool, error) {
+	switch s {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	}
+	return false, errors.New("want true or false")
 }
 
 func intIn(s string, lo, hi int) (int, error) {

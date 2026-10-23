@@ -56,13 +56,14 @@ func main() {
 	scale := flag.Int("scale", 3, "graphics mode pixel scale, 1..8")
 	fps := flag.Int("fps", 15, "graphics mode animation frames per second, 0 for none")
 	device := flag.String("fb", "/dev/fb0", "graphics mode framebuffer device")
+	attract := flag.Bool("attract", false, "start with attract mode armed: cycle the pages after 30s without a key")
 	newsURL := flag.String("news-url", "", "news JSON URL (better kept in the config file)")
 	weatherURL := flag.String("weather-url", "", "weather JSON URL")
 	demo := flag.Bool("demo", false, "show synthetic data instead of this host's")
 	reset := flag.String("reset-console", "", "force a VT back to text mode (e.g. /dev/tty1, or \"-\" for this one) and exit")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, l links (L2/L3), space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, q quit.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, l links (L2/L3), space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, i attract mode, q quit.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -116,6 +117,9 @@ func main() {
 	}
 	if !set["fps"] && cfg.HasFPS {
 		*fps = cfg.FPS
+	}
+	if !set["attract"] && cfg.Attract {
+		*attract = true
 	}
 	if !set["news-url"] {
 		*newsURL = cfg.NewsURL
@@ -228,6 +232,7 @@ func main() {
 		}
 		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: ti,
 			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, OnPage: onPage,
+			Attract: *attract,
 			AfterOpen: func(tookVT bool) error {
 				if err := drop(tookVT); err != nil {
 					return err
@@ -241,7 +246,7 @@ func main() {
 		return
 	}
 
-	if _, err := tea.NewProgram(tui.New(*interval, th.Name, startPage, src, feedView, onPage)).Run(); err != nil {
+	if _, err := tea.NewProgram(tui.New(*interval, th.Name, startPage, src, feedView, onPage, *attract)).Run(); err != nil {
 		fail("%v", err)
 	}
 }
