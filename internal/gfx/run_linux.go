@@ -27,6 +27,8 @@ type Options struct {
 	Page     ui.Page
 	Feeds    func() feeds.View // may be nil
 	OnPage   func(ui.Page)     // told every page shown (socket/link demand); may be nil
+	Intro    bool              // play the boot intro first (needs FPS > 0)
+	Version  string            // for the intro's title card
 	Attract  bool              // start with attract mode armed
 	// AfterOpen runs once the framebuffer and console are open, before
 	// the first frame: where a root process drops privileges. tookVT says
@@ -111,6 +113,19 @@ func Run(o Options) error {
 	active := true
 	fb.Clear(rgb(ui.Themes[theme].BG))
 	attract := ui.NewAttract(o.Attract)
+	// The intro plays while the first samples come in; it needs animation.
+	var intro *Intro
+	if o.Intro && o.FPS > 0 {
+		intro = &Intro{Sub: o.Version}
+		if hn := cur.Host.Hostname; hn != "" {
+			intro.Sub += " · " + hn
+		}
+	}
+	skipIntro := func() {
+		if intro != nil {
+			intro, r, c = nil, NewRenderer(), nil
+		}
+	}
 
 	// draw is called every animation tick. It re-lays out the dashboard
 	// only when something it shows changed (a tween in progress, the
@@ -122,6 +137,17 @@ func Run(o Options) error {
 		}
 		th := ui.Themes[theme]
 		now := time.Now()
+		if intro != nil {
+			// Until a sample after the first lands there are no rates.
+			el := now.Sub(start).Seconds()
+			if !intro.Over(el, sampled.After(start)) {
+				if spans := intro.Draw(cols*Tile, rows*Tile, th, el); len(spans) > 0 {
+					fb.Blit(intro.Frame(), spans, o.Scale, padX, padY)
+				}
+				return
+			}
+			skipIntro()
+		}
 		k := min(float64(now.Sub(sampled))/float64(tween), 1)
 		fv := feedView()
 		// The news page types text continuously, so it lays out every
@@ -143,6 +169,9 @@ func Run(o Options) error {
 	}
 	redrawAll := func() {
 		r, c = NewRenderer(), nil
+		if intro != nil {
+			intro.Reset()
+		}
 		fb.Clear(rgb(ui.Themes[theme].BG))
 		draw()
 	}
@@ -177,7 +206,9 @@ func Run(o Options) error {
 			if !ok {
 				return errors.New("keyboard closed")
 			}
-			// Any key stops attract mode's cycle, then does its usual job.
+			// Any key skips the intro and stops attract mode's cycle,
+			// then does its usual job.
+			skipIntro()
 			attract.Key(time.Now())
 			switch {
 			case k.Code == KeyUp || k.Code == KeyLeft:
@@ -209,6 +240,8 @@ func Run(o Options) error {
 			case k.Rune == 'i' || k.Rune == 'I':
 				attract.Toggle(time.Now())
 				draw()
+			default:
+				draw() // the dashboard, if the key ended the intro
 			}
 		case s := <-sigs:
 			switch s {

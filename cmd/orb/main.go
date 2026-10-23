@@ -56,6 +56,7 @@ func main() {
 	scale := flag.Int("scale", 3, "graphics mode pixel scale, 1..8")
 	fps := flag.Int("fps", 15, "graphics mode animation frames per second, 0 for none")
 	device := flag.String("fb", "/dev/fb0", "graphics mode framebuffer device")
+	intro := flag.Bool("intro", true, "graphics mode: play the boot intro on start (any key skips)")
 	attract := flag.Bool("attract", false, "start with attract mode armed: cycle the pages after 30s without a key")
 	newsURL := flag.String("news-url", "", "news JSON URL (better kept in the config file)")
 	weatherURL := flag.String("weather-url", "", "weather JSON URL")
@@ -117,6 +118,9 @@ func main() {
 	}
 	if !set["fps"] && cfg.HasFPS {
 		*fps = cfg.FPS
+	}
+	if !set["intro"] && cfg.NoIntro {
+		*intro = false
 	}
 	if !set["attract"] && cfg.Attract {
 		*attract = true
@@ -232,7 +236,7 @@ func main() {
 		}
 		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: ti,
 			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, OnPage: onPage,
-			Attract: *attract,
+			Intro: *intro, Version: version, Attract: *attract,
 			AfterOpen: func(tookVT bool) error {
 				if err := drop(tookVT); err != nil {
 					return err

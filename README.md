@@ -48,7 +48,14 @@ reader types them, stars twinkle behind the windows.
 ```bash
 orb -gfx -scale 3       # pixel size, 1..8 (3, the default = 143x60 tiles on 3440x1440)
 orb -gfx -fps 0         # no animation, redraw once per sample
+orb -gfx -intro=false   # straight to the dashboard
 ```
+
+On start it plays a short boot intro, about 4 seconds, while the first
+samples come in: a studio splash, then a title card with the orb, ORB,
+the version and hostname, and a blinking PRESS START. Any key skips it and
+does its usual job (`q` quits at once). No intro with `-fps 0`, `-once` or
+in a terminal.
 
 Start it from the monitor's own console login (needs the `video` group),
 or as root from anywhere, including SSH: `sudo orb -gfx` takes a free
@@ -114,6 +121,7 @@ page = dash                 # dash, news, net or links
 interval = 1s
 scale = 3                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation
+intro = true                # graphics mode boot intro
 attract = false             # true: start with attract mode armed
 news_url = https://example.com/news.json
 weather_url = https://example.com/weather.json

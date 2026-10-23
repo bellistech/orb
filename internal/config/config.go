@@ -28,6 +28,7 @@ type Config struct {
 	Page       string
 	NewsURL    string
 	WeatherURL string
+	NoIntro    bool // intro = false: no boot sequence in graphics mode
 	Attract    bool // attract = true: armed from the start
 }
 
@@ -146,6 +147,10 @@ func (c *Config) set(key, val string) error {
 			return errors.New("page must be dash, news, net or links")
 		}
 		c.Page = val
+	case "intro":
+		var on bool
+		on, err = boolean(val)
+		c.NoIntro = err == nil && !on
 	case "attract":
 		c.Attract, err = boolean(val)
 	case "news_url":

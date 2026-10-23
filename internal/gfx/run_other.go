@@ -22,6 +22,8 @@ type Options struct {
 	Page      ui.Page
 	Feeds     func() feeds.View
 	OnPage    func(ui.Page)
+	Intro     bool
+	Version   string
 	Attract   bool
 	AfterOpen func(tookVT bool) error
 }

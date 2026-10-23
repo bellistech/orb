@@ -26,6 +26,7 @@ scale=5
 fps = 30
 interval = 2s
 page = news
+intro = false
 attract = true
 news_url = https://example.com/n.json
 weather_url = https://example.com/w.json   # trailing comment
@@ -35,7 +36,7 @@ weather_url = https://example.com/w.json   # trailing comment
 		t.Fatalf("err=%v warn=%q", err, warn)
 	}
 	want := Config{Theme: "chrono", Scale: 5, FPS: 30, HasFPS: true, Interval: 2 * time.Second, Page: "news",
-		Attract: true, NewsURL: "https://example.com/n.json", WeatherURL: "https://example.com/w.json"}
+		NoIntro: true, Attract: true, NewsURL: "https://example.com/n.json", WeatherURL: "https://example.com/w.json"}
 	if c != want {
 		t.Fatalf("got %+v\nwant %+v", c, want)
 	}
@@ -57,6 +58,7 @@ func TestLoadRejects(t *testing.T) {
 		"bad interval":  "interval = soon",
 		"tiny interval": "interval = 1ms",
 		"bad page":      "page = sports",
+		"bad intro":     "intro = yes",
 		"bad attract":   "attract = 1",
 		"http news":     "news_url = http://example.com/n.json",
 		"duplicate":     "fps = 1\nfps = 2",
@@ -83,7 +85,7 @@ func TestFPSZeroIsSet(t *testing.T) {
 }
 
 func TestBoolKeys(t *testing.T) {
-	c, _, err := Load(write(t, "attract = false\n", 0o600))
+	c, _, err := Load(write(t, "intro = true\nattract = false\n", 0o600))
 	if err != nil || c != (Config{}) {
 		t.Fatalf("defaults spelled out: got %+v, %v", c, err)
 	}

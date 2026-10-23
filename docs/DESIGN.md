@@ -186,6 +186,22 @@ sequence of frames, the incremental frame equals a fresh full render.
 In the reader, letters glow as they are typed and cool to the text color
 over 0.35 s.
 
+Boot intro (`gfx.Intro`), drawn as pixels straight into a frame, not
+through the canvas: a studio splash (the `gfx.Studio` wordmark in the
+font scaled up, the header's hostname gradient, a light sweep, a glint,
+a line drawn out from the middle; 1.7 s), then a title card (stars, the
+orb growing out of nothing, a flash, ORB in big letters with a chrome
+gradient per scanline, version and hostname typed out, a blinking PRESS
+START; 2.1 s), then a 0.3 s fade to the dashboard. The title card holds
+until a second sample has landed (rates exist), at most 4 s more, so the
+dashboard is ready when it ends. Frames are a pure function of time;
+each is diffed against the last and only changed spans are blitted
+(~1.2 ms a frame at 3440x1440, scale 3). Any key skips it and is then
+handled; `q` quits at once. Off with `-intro=false`, with `-fps 0` (no
+animation was asked for, and a still title would only delay the
+dashboard) and in terminals (opened over SSH to look at something: the
+first sample lands in 250 ms, and block art cannot carry the look).
+
 Animation (default 15 fps): values ease out over 600 ms after each sample,
 a light sweeps each title every 7 s (staggered), stars twinkle in the gaps.
 The backdrop and windows are a cached base layer; a tile is restored and
