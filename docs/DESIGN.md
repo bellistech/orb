@@ -196,3 +196,11 @@ row via upper half blocks (fg = top core, bg = bottom core).
   log tail with severity color.
 - Autostart graphics mode on the desk VT (systemd unit or login hook).
 - DRM/KMS backend and hosting other binaries fullscreen: [ADR-0001](adr/0001-native-kiosk-renderer.md).
+
+Ideas, undecided:
+
+- Alerts as RPG encounters: a threshold crossing flashes the screen and
+  opens a dialog; header bars as HP/MP gauges.
+- Monitor power: blank the desk monitor at night (DPMS), wake it on an alert.
+- Overnight page: a 24 h in-memory sample ring, day-long sparklines with
+  spike and restart markers.
