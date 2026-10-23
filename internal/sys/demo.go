@@ -106,7 +106,7 @@ func Demo(now time.Time) *Snapshot {
 		sock("tcp", "192.168.210.2:179", "192.168.210.1:179", "ESTAB", 1550, "bird"),
 		sock("tcp", "127.0.0.1:43122", "127.0.0.1:5432", "ESTAB", 2604, "wotan"),
 		sock("tcp", "192.168.210.2:52210", "203.0.113.80:443", "ESTAB", 5367, "orb"),
-		sock("tcp", "192.168.210.2:60122", "140.82.112.4:443", "CLOSE-WAIT", 4980, "fwupd"),
+		sock("tcp", "192.168.210.2:60122", "198.51.100.4:443", "CLOSE-WAIT", 4980, "fwupd"),
 		sock("tcp6", "[2001:db8::20]:443", "[2001:db8::99]:61000", "ESTAB", 2088, "haproxy"),
 	}
 	s.Links = demoLinks(wave)

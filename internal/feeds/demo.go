@@ -35,7 +35,7 @@ func Demo(now time.Time) View {
 			Item{"Opening Reception for Sandy Hook's Artist in Residence", "National Park Service", ago(9000), ""}),
 	}}
 	w := &Weather{
-		Location: "Austin, Texas", Updated: ago(14),
+		Location: "Springfield", Updated: ago(14),
 		Now: Now{Temp: 80, High: 91, Low: 72, Precip: 40, Summary: "Scattered showers", Kind: Rain},
 		Daily: []Day{
 			{"Monday", 89, 72, "Scattered thunderstorms", Storm},
