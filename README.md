@@ -4,7 +4,7 @@ View-only host health dashboard for the terminal and the bare Linux console. Bui
 
 ![orb in graphics mode: boot intro, the dashboard with its dog through every theme, then news & weather, network and links pages](docs/media/orb.webp)
 
-<sub>`orb -gfx -demo` (synthetic data), 143x60 tiles: the layout of a 3440x1440 monitor at `-scale 3`. Boot intro at normal speed, then 2x: the dashboard while the dog naps, trots, sprints and barks at a full disk, a nonagon cross-fade and the other themes (sylvan among them), news & weather under a thunderstorm sky, network and links.</sub>
+<sub>`orb -gfx -demo` (synthetic data), 143x60 tiles: the layout of a 3440x1440 monitor at `-scale 3`. Boot intro at normal speed, then 2x: the dashboard while the dog naps, plays ball, trots, sprints and barks at a full disk, a nonagon cross-fade and the other themes (sylvan among them), news & weather under a thunderstorm sky, network and links.</sub>
 
 ```bash
 orb                     # live dashboard in the terminal
