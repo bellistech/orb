@@ -40,7 +40,7 @@ func main() {
 	}
 	cfgPath := flag.String("config", config.DefaultPath(), "config file")
 	theme := flag.String("theme", ui.DefaultTheme, "color theme: "+strings.Join(themeNames, ", "))
-	page := flag.String("page", "dash", "starting page: dash, news or net")
+	page := flag.String("page", "dash", "starting page: dash, news, net or links")
 	interval := flag.Duration("interval", time.Second, "sample interval")
 	once := flag.String("once", "", "print one frame of WxH cells (pixels with -gfx, as PNG) and exit")
 	gfxMode := flag.Bool("gfx", false, "draw pixels on the local console framebuffer instead of a terminal")
@@ -53,7 +53,7 @@ func main() {
 	reset := flag.String("reset-console", "", "force a VT back to text mode (e.g. /dev/tty1, or \"-\" for this one) and exit")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, q quit.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, l links (L2/L3), space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, q quit.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -116,8 +116,10 @@ func main() {
 		startPage = ui.News
 	case "net":
 		startPage = ui.Net
+	case "links":
+		startPage = ui.Links
 	default:
-		fail("-page must be dash, news or net")
+		fail("-page must be dash, news, net or links")
 	}
 	if *interval < 100*time.Millisecond {
 		fail("interval must be at least 100ms")
@@ -134,11 +136,16 @@ func main() {
 	}
 
 	sampler := sys.NewSampler()
-	src, wantSockets := sampler.Sample, sampler.WantSockets.Store
+	src := sampler.Sample
+	// Sockets and links are read only while their page is up.
+	onPage := func(p ui.Page) {
+		sampler.WantSockets.Store(p == ui.Net)
+		sampler.WantLinks.Store(p == ui.Links)
+	}
 	feedView := func() feeds.View { return feeds.View{} }
 	startFeeds := func() {}
 	if *demo {
-		wantSockets = func(bool) {}
+		onPage = func(ui.Page) {}
 		src = func() *sys.Snapshot { return sys.Demo(time.Now()) }
 		dv := feeds.Demo(time.Now()) // built once: the reader caches by identity
 		feedView = func() feeds.View { return dv }
@@ -182,7 +189,7 @@ func main() {
 	}
 
 	if *once != "" {
-		wantSockets(startPage == ui.Net)
+		onPage(startPage)
 		runOnce(*once, *gfxMode, *scale, ui.View{Page: startPage, Snap: onceSnap(sampler, *demo, *interval), Feeds: onceFeeds(feedView, startPage), Now: time.Now()}, th)
 		return
 	}
@@ -195,7 +202,7 @@ func main() {
 			}
 		}
 		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: ti,
-			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, Sockets: wantSockets,
+			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, OnPage: onPage,
 			AfterOpen: func(tookVT bool) error {
 				if err := drop(tookVT); err != nil {
 					return err
@@ -209,7 +216,7 @@ func main() {
 		return
 	}
 
-	if _, err := tea.NewProgram(tui.New(*interval, th.Name, startPage, src, feedView, wantSockets)).Run(); err != nil {
+	if _, err := tea.NewProgram(tui.New(*interval, th.Name, startPage, src, feedView, onPage)).Run(); err != nil {
 		fail("%v", err)
 	}
 }
@@ -217,6 +224,9 @@ func main() {
 func onceSnap(s *sys.Sampler, demo bool, interval time.Duration) *sys.Snapshot {
 	if demo {
 		return sys.Demo(time.Now())
+	}
+	if s.WantLinks.Load() {
+		s.Sample() // link rates need a sample with links on before this one
 	}
 	time.Sleep(interval)
 	return s.Sample()

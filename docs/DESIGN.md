@@ -85,10 +85,30 @@ configured in `~/.config/orb/config`.
 `n`. Listening sockets (TCP LISTEN, UDP unconnected) sorted by port, with
 service name, address (`*` for any) and owner; connections with state
 colored by meaning (established calm, half-closed warm, TIME-WAIT faint);
-counts by state and top peers; the interfaces panel. Sockets come from
+counts by state and top peers; the interfaces panel. Connections read
+CLIENT -> SERVER: the arrow always runs from the ephemeral port to the
+service port. Sockets come from
 `/proc/net/*`, owners by matching `socket:[inode]` fd links under
 `/proc/<pid>/fd` (bounded walk, ~5 ms). The sampler reads them every 2 s,
 and only while the page asks.
+
+## Links page
+
+`l`. Layer 2 and 3 the way a switch or router shows it. Interfaces as
+ports: state, kind (ether, wifi, bridge, bond, vlan, wireguard, tun), line
+speed, MTU, rx/tx rates, a load sparkline (against line rate when the
+driver reports one), error/drop totals that turn hot while they climb, and
+a utilization bar per physical port. Bridges with their member ports (veths
+are shown here, not as ports) and how many MACs each learned. LLDP
+neighbors: system name, port, chassis, management addresses, capabilities.
+The ARP/NDP neighbor table (link-local after global) and the main routing
+table (default first, protocol colored: kernel faint, learned from a
+routing protocol bright).
+
+Interfaces come from `/sys/class/net`; neighbors, routes and the bridge
+forwarding database from rtnetlink dumps (no privilege needed; parsed by
+hand with every length checked, fuzzed). Read every sample, only while the
+page is up; per-port history starts when it opens.
 
 ## Privileges
 

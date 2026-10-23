@@ -25,7 +25,7 @@ func frameTick() tea.Cmd {
 }
 
 // Model is the Bubble Tea model. It only displays; the keys are d, w and n
-// (pages), space (pause the news reader), arrows (previous/next story),
+// l (pages), space (pause the news reader), arrows (previous/next story),
 // t (next theme) and q (quit).
 type Model struct {
 	source   func() *sys.Snapshot
@@ -34,24 +34,25 @@ type Model struct {
 	page     ui.Page
 	feeds    func() feeds.View
 	reader   *ui.ReaderClock // pointer: the clock outlives Model copies
-	sockets  func(bool)
+	onPage   func(ui.Page)
 	snap     *sys.Snapshot
 	w, h     int
 }
 
 // New returns a model sampling source every interval, starting on theme and
-// page. source must be the one main configured (socket demand, the root
-// helper's owner lookup); sockets switches socket reading on while the
-// network page shows. feedView and sockets may be nil.
-func New(interval time.Duration, theme string, page ui.Page, source func() *sys.Snapshot, feedView func() feeds.View, sockets func(bool)) Model {
+// page. source must be the one main configured (socket and link demand,
+// the root helper's owner lookup); onPage is told every page shown, so the
+// source reads sockets or links only while their page is up. feedView and
+// onPage may be nil.
+func New(interval time.Duration, theme string, page ui.Page, source func() *sys.Snapshot, feedView func() feeds.View, onPage func(ui.Page)) Model {
 	if feedView == nil {
 		feedView = func() feeds.View { return feeds.View{} }
 	}
-	if sockets == nil {
-		sockets = func(bool) {}
+	if onPage == nil {
+		onPage = func(ui.Page) {}
 	}
-	sockets(page == ui.Net)
-	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}, sockets: sockets, source: source}
+	onPage(page)
+	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}, onPage: onPage, source: source}
 	for i, t := range ui.Themes {
 		if t.Name == theme {
 			m.theme = i
@@ -101,14 +102,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.theme = (m.theme + 1) % len(ui.Themes)
 		case "d":
 			m.page = ui.Dash
-			m.sockets(false)
+			m.onPage(m.page)
 		case "n":
 			m.page = ui.Net
-			m.sockets(true)
+			m.onPage(m.page)
+		case "l":
+			m.page = ui.Links
+			m.onPage(m.page)
 		case "space", " ":
 			m.reader.Toggle(time.Now())
 		case "w":
-			m.sockets(false)
+			m.onPage(ui.News)
 			if m.page != ui.News {
 				m.page = ui.News
 				return m, frameTick()

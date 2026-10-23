@@ -6,6 +6,7 @@ package sys
 import (
 	"os"
 	"sort"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -50,6 +51,8 @@ type Snapshot struct {
 	// (root, or the privileged helper); sockets still without an owner
 	// then belong to no process (kernel, or closing).
 	AllOwners bool
+
+	Links *Links // only while the links page asks for it
 }
 
 // Sampler takes successive readings and turns counters into rates. It is not
@@ -82,6 +85,15 @@ type Sampler struct {
 	AllOwners bool
 	sockets   []Socket
 	socketsAt time.Time
+
+	// WantLinks turns the layer 2/3 reads on (links page). Safe to set
+	// from any goroutine.
+	WantLinks atomic.Bool
+	// LLDP, when set, returns the LLDP neighbors heard so far and whether
+	// a listener is running. Set before the first Sample.
+	LLDP     func() ([]LLDPNeighbor, bool)
+	linkPrev map[string]linkCounters
+	linkHist map[string]*Ring
 }
 
 // socketEvery is how often sockets are re-read while wanted: walking every
@@ -218,7 +230,56 @@ func (s *Sampler) Sample() *Snapshot {
 	} else {
 		s.sockets = nil
 	}
+
+	if s.WantLinks.Load() {
+		snap.Links = s.readLinkView(dt)
+	} else {
+		s.linkPrev, s.linkHist = nil, nil
+	}
 	return snap
+}
+
+func (s *Sampler) readLinkView(dt float64) *Links {
+	ls, cur := readLinks()
+	if s.linkPrev != nil {
+		linkRates(ls, s.linkPrev, cur, dt)
+		if s.linkHist == nil {
+			s.linkHist = map[string]*Ring{}
+		}
+		seen := map[string]bool{}
+		for i := range ls {
+			h, ok := s.linkHist[ls[i].Name]
+			if !ok {
+				h = NewRing(History)
+				s.linkHist[ls[i].Name] = h
+			}
+			h.Push(ls[i].RxRate + ls[i].TxRate)
+			ls[i].Hist = h.Values()
+			seen[ls[i].Name] = true
+		}
+		for n := range s.linkHist { // interfaces that went away
+			if !seen[n] {
+				delete(s.linkHist, n)
+			}
+		}
+	}
+	s.linkPrev = cur
+	names := map[int]string{}
+	for _, l := range ls {
+		names[l.Index] = l.Name
+	}
+	ifname := func(i int) string {
+		if n, ok := names[i]; ok {
+			return n
+		}
+		return "#" + strconv.Itoa(i)
+	}
+	v := &Links{Links: ls}
+	v.Neigh, v.Routes, v.FDB = readL2L3(ifname)
+	if s.LLDP != nil {
+		v.LLDP, v.LLDPOn = s.LLDP()
+	}
+	return v
 }
 
 func rate(prev, cur uint64, dt float64) float64 {

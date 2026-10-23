@@ -21,7 +21,7 @@ type Options struct {
 	FPS       int
 	Page      ui.Page
 	Feeds     func() feeds.View
-	Sockets   func(bool)
+	OnPage    func(ui.Page)
 	AfterOpen func(tookVT bool) error
 }
 

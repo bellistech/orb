@@ -88,6 +88,8 @@ func TestRenderAnySize(t *testing.T) {
 		{Page: News, Snap: demo, Feeds: feeds.View{NewsOn: true, WeatherErr: "timeout", WeatherOn: true}},
 		{Page: News, Snap: empty},
 		{Page: Net, Snap: demo}, {Page: Net, Snap: empty},
+		{Page: Links, Snap: demo}, {Page: Links, Snap: empty},
+		{Page: Links, Snap: &sys.Snapshot{Time: demo.Time, Links: &sys.Links{}}}, // not root: no LLDP
 	}
 	for _, th := range Themes {
 		for _, v := range views {

@@ -135,7 +135,7 @@ func TestIncrementalMatchesFullRender(t *testing.T) {
 	fv := feeds.Demo(start)
 	steps := []float64{0, 0.07, 0.5, 1.3, 2.9, 3.0, 4.4, 5.05, 7.7, 8.0, 9.1, 12.5, 13.1, 20.2}
 	for _, th := range []*ui.Theme{ui.Themes[0], ui.Themes[len(ui.Themes)-1]} {
-		for _, page := range []ui.Page{ui.Dash, ui.News, ui.Net} {
+		for _, page := range []ui.Page{ui.Dash, ui.News, ui.Net, ui.Links} {
 			// One renderer across consecutive frames, as the run loop does.
 			inc := NewRenderer()
 			for i, step := range steps {

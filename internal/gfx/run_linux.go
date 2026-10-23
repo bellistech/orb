@@ -26,7 +26,7 @@ type Options struct {
 	FPS      int // animation frames per second; 0 = redraw on samples only
 	Page     ui.Page
 	Feeds    func() feeds.View // may be nil
-	Sockets  func(bool)        // asks the source for sockets; may be nil
+	OnPage   func(ui.Page)     // told every page shown (socket/link demand); may be nil
 	// AfterOpen runs once the framebuffer and console are open, before
 	// the first frame: where a root process drops privileges. tookVT says
 	// whether restoring the console will need CAP_SYS_TTY_CONFIG.
@@ -88,13 +88,13 @@ func Run(o Options) error {
 	}()
 
 	theme, page := o.Theme, o.Page
-	want := o.Sockets
+	want := o.OnPage
 	if want == nil {
-		want = func(bool) {}
+		want = func(ui.Page) {}
 	}
 	setPage := func(p ui.Page) {
 		page = p
-		want(p == ui.Net)
+		want(p)
 	}
 	setPage(page)
 	feedView := o.Feeds
@@ -186,6 +186,9 @@ func Run(o Options) error {
 				draw()
 			case k.Rune == 'n' || k.Rune == 'N':
 				setPage(ui.Net)
+				draw()
+			case k.Rune == 'l' || k.Rune == 'L':
+				setPage(ui.Links)
 				draw()
 			case k.Rune == ' ':
 				reader.Toggle(time.Now())

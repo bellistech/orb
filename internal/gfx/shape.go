@@ -41,6 +41,14 @@ func shape(r rune) (glyph, bool) {
 		fill(0x18, 0, Tile)
 	case r == '┄':
 		g[4] = 0xCC
+	case r >= '▁' && r <= '▇': // sparkline eighths, filled from the bottom
+		fill(0xFF, Tile-int(r-'▁'+1)*Tile/8, Tile)
+	case r == '├': // tree branches (bridge ports)
+		fill(0x18, 0, Tile)
+		g[3], g[4] = 0x1F, 0x1F
+	case r == '└':
+		fill(0x18, 0, 5)
+		g[3], g[4] = 0x1F, 0x1F
 	case r == '╭':
 		g[3], g[4] = 0x07, 0x0F
 		fill(0x18, 5, Tile)

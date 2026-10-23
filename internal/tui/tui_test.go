@@ -17,7 +17,7 @@ func TestUsesTheGivenSourceAndSocketSwitch(t *testing.T) {
 	snap := &sys.Snapshot{Time: time.Unix(1, 0), Sockets: []sys.Socket{{Proto: "tcp", State: "LISTEN"}}}
 	source := func() *sys.Snapshot { calls++; return snap }
 	var wanted []bool
-	m := New(time.Second, "phosphor", ui.Dash, source, nil, func(b bool) { wanted = append(wanted, b) })
+	m := New(time.Second, "phosphor", ui.Dash, source, nil, func(p ui.Page) { wanted = append(wanted, p == ui.Net) })
 
 	msg := m.Init()() // first sample
 	if calls != 1 {

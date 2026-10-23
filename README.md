@@ -5,7 +5,7 @@ View-only host health dashboard for the terminal. Built for a big monitor across
 ```bash
 orb                     # live dashboard in the terminal
 orb -gfx                # pixel graphics on the local console (no desktop)
-orb -page news          # start on news & weather (or -page net)
+orb -page news          # start on news & weather (or -page net, -page links)
 orb -theme arcane       # phosphor, gizzard (default), lantern, chrono, arcane, crimson
 orb -interval 2s        # sample every 2s
 orb -demo               # synthetic data
@@ -13,7 +13,7 @@ orb -once 215x45        # print one frame and exit
 orb -gfx -once 3440x1440 > frame.png
 ```
 
-Keys: `d` dashboard, `w` news & weather, `n` network, `space` pause/resume the news reader,
+Keys: `d` dashboard, `w` news & weather, `n` network, `l` links (L2/L3), `space` pause/resume the news reader,
 `↑`/`←` previous story, `↓`/`→` next story, `t` next theme, `q` quit.
 
 ## Configuration
@@ -24,7 +24,7 @@ URLs may be private.
 
 ```
 theme = gizzard             # phosphor, gizzard, lantern, chrono, arcane, crimson
-page = dash                 # dash, news or net
+page = dash                 # dash, news, net or links
 interval = 1s
 scale = 3                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation
