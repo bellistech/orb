@@ -55,8 +55,10 @@ assumes a size.
 
 `w` switches to it, `d` back; tabs in the header's top border show which
 page is up. The six headline windows fill the top half across the whole
-width; the bottom half holds the weather and the reader. Weather: current conditions with 12x8 pixel art
-(rain, snow and storms fall, one step per second), the hourly temperature as
+width; the bottom half holds the weather, narrow, and the reader, widest.
+Weather: current conditions with 12x8 pixel art (rain, snow and storms
+fall, one step per second; above the reading when the pane is narrow, with
+the update time on its bottom line), the hourly temperature as
 a heat-colored curve over temperatures, mini icons and hours, and a five-day
 forecast with range bars on a shared min..max track. Temperatures use the
 heat ramp from 20°F (cool) to 105°F (hot).

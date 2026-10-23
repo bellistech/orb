@@ -14,21 +14,21 @@ const rotateEvery = 15 * time.Second
 
 // newsGrid: the categories fill the top half across the whole width, so
 // each gets room; weather (now, next hours, forecast) and the reader share
-// the bottom half (Stevie, 2026-10-23).
+// the bottom half, the reader widest (Stevie, 2026-10-23).
 func newsGrid(w int) []row {
 	hours := slot{nil, 0, []slot{{drawHourly, 45, nil}, {drawDaily, 55, nil}}}
 	switch {
 	case w >= 180:
-		hours.weight = 34
+		hours.weight = 28
 		return []row{
 			{50, []slot{{newsColumns(3), 1, nil}}},
-			{50, []slot{{drawNow, 24, nil}, hours, {drawReader, 42, nil}}},
+			{50, []slot{{drawNow, 12, nil}, hours, {drawReader, 60, nil}}},
 		}
 	case w >= 100:
-		hours.weight = 36
+		hours.weight = 30
 		return []row{
 			{50, []slot{{newsColumns(3), 1, nil}}},
-			{50, []slot{{drawNow, 30, nil}, hours, {drawReader, 34, nil}}},
+			{50, []slot{{drawNow, 15, nil}, hours, {drawReader, 55, nil}}},
 		}
 	default:
 		out := []row{{24, []slot{{drawReader, 1, nil}}}, {16, []slot{{drawNow, 1, nil}}}, {12, []slot{{drawDaily, 1, nil}}}}
@@ -208,9 +208,19 @@ func drawNow(r canvas.Region, v *View, t *Theme) {
 	if v.Feeds.WeatherErr != "" {
 		sub = v.Feeds.WeatherErr
 	}
+	// A pane too narrow for both title and subtitle shows the update time
+	// (or error) on its bottom line instead.
+	bottom := ""
+	if len([]rune(title))+len([]rune(sub))+11 >= r.W { // Frame's own fit rule
+		bottom, sub = sub, ""
+	}
 	in := Frame(r, t, title, sub, t.Host)
 	if in.Empty() {
 		return
+	}
+	if bottom != "" && in.H > 1 {
+		in.Text(max((in.W-len(bottom))/2, 0), in.H-1, trunc(bottom, in.W), t.Dim)
+		in = in.Sub(0, 0, in.W, in.H-1)
 	}
 	if w == nil {
 		feedStatus(in, t, v.Feeds.WeatherOn, v.Feeds.WeatherErr, "weather")
@@ -221,11 +231,16 @@ func drawNow(r canvas.Region, v *View, t *Theme) {
 	sw, sh := spriteSize(in.Square())
 	content := 7 // big temperature (3) + gap + summary, high/low, rain
 	top := max((in.H-max(content, sh))/2, 0)
-	if in.W >= sw+3+16 && in.H >= sh {
+	y0 := top + (max(content, sh)-content)/2
+	switch {
+	case in.W >= sw+3+16 && in.H >= sh: // art beside the reading
 		drawSprite(in, 0, top+(max(content, sh)-sh)/2, n.Kind, v.Now, t)
 		x = sw + 3
+	case in.W >= sw && in.H >= sh+1+content: // narrow but tall: art above
+		top = (in.H - sh - 1 - content) / 2
+		drawSprite(in, (in.W-sw)/2, top, n.Kind, v.Now, t)
+		y0 = top + sh + 1
 	}
-	y0 := top + (max(content, sh)-content)/2
 	temp := fmt.Sprint(n.Temp)
 	tx := Big(in, x, y0, temp, func(int) canvas.Color { return t.Heat(tempHeat(n.Temp)) })
 	in.Bold(tx+1, y0, "°F", t.Heat(tempHeat(n.Temp)))
