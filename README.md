@@ -122,7 +122,8 @@ sockets needs (as nobody, with no network), the LLDP helper drops to nobody
 with no capabilities once its socket is open, and the main process drops to
 you with no capabilities before it fetches anything. See
 [ADR-0002](docs/adr/0002-privilege-separation.md). Under sudo, orb reads the
-invoking user's `~/.config/orb/config`.
+invoking user's `~/.config/orb/config`, only if it is a regular file
+owned by that user (as root it follows no symlink there).
 
 ## Install
 

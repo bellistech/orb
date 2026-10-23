@@ -34,7 +34,7 @@ make demo           # run with synthetic data (both pages)
 - `internal/canvas/` — cell grid (rune + fg + bg + bold), clipped regions, truecolor SGR serializer
 - `internal/ui/` — themes, widgets (frame, gauge, braille graph, heatmap, block-font clock, range bar), pages (`Dash`, `News`, `Net`, `Links`), panels, responsive grid, weather sprites. Pure: `ui.View` in, canvas out
 - `internal/feeds/` — news + weather JSON: fetch (UA `orb/<version>`, https only, 8 MiB cap, redirects re-checked), parse + validate, `Clean` (HTML unescape, transliterate, printable ASCII only, emoji dropped; fuzzed), `Poll` with backoff, `Store` (RWMutex snapshot + version), `Brief` (screen-safe errors, never the URL), `Demo`
-- `internal/config/` — `~/.config/orb/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override
+- `internal/config/` — `~/.config/orb/config` key = value, strict (unknown keys, duplicates, bad values rejected), warns unless mode 600; flags override; as root only via `LoadOwned` (regular file owned by the invoking user, no symlink, checked before open)
 - `internal/priv/` — privilege separation (ADR-0002): `Drop` (all-thread uid/gid/caps/no_new_privs, verified per thread), socket-owner helper (`-sock-helper`, nobody + CAP_DAC_READ_SEARCH + CAP_SYS_PTRACE, empty netns) and its pipe protocol; LLDP helper (`-lldp-helper`, ADR-0003: opens the packet socket as root, then nobody with no caps, host netns, JSON lines)
 - `internal/lldp/` — LLDPDU decoder (TLVs, printable-only strings, fuzzed), neighbor table with TTL expiry, packet-socket listener (`listen_linux.go`)
 - `internal/tui/` — Bubble Tea v2 program: ticks the sampler, renders, handles resize and keys

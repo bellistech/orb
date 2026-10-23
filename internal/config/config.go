@@ -67,6 +67,27 @@ func Load(path string) (c Config, warn string, err error) {
 	if err != nil {
 		return Config{}, "", err
 	}
+	return parse(f, st, path)
+}
+
+// LoadOwned is Load for a process running as root on someone's behalf
+// (sudo reads the invoking user's file): the file must be a regular file,
+// not a symlink, owned by uid. A user can put anything where the config is
+// looked for; this way root never opens a device (opening /dev/watchdog
+// arms it), blocks on a FIFO, or reads another user's or root's file.
+func LoadOwned(path string, uid int) (c Config, warn string, err error) {
+	f, st, err := openOwned(path, uid)
+	if errors.Is(err, fs.ErrNotExist) {
+		return Config{}, "", nil
+	}
+	if err != nil {
+		return Config{}, "", err
+	}
+	defer f.Close()
+	return parse(f, st, path)
+}
+
+func parse(f *os.File, st fs.FileInfo, path string) (c Config, warn string, err error) {
 	if st.Size() > maxSize {
 		return Config{}, "", fmt.Errorf("%s: larger than %d bytes", path, maxSize)
 	}

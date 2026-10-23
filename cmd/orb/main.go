@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,7 +83,17 @@ func main() {
 	}
 
 	// The config file supplies defaults; flags given on the command line win.
-	cfg, warn, err := config.Load(*cfgPath)
+	load := config.Load
+	if os.Geteuid() == 0 {
+		// Still root: read only a regular file owned by the user it belongs
+		// to (sudo's invoking user, else root), never what a symlink names.
+		owner := 0
+		if t := priv.TargetFromEnv(os.Getenv); os.Getenv("SUDO_UID") == strconv.Itoa(t.UID) {
+			owner = t.UID
+		}
+		load = func(path string) (config.Config, string, error) { return config.LoadOwned(path, owner) }
+	}
+	cfg, warn, err := load(*cfgPath)
 	if err != nil {
 		fail("%v", err)
 	}
