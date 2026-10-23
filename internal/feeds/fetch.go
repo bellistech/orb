@@ -24,15 +24,21 @@ type Client struct {
 	ua   string
 }
 
-// NewClient returns a client. Redirects are limited and must stay https.
+// NewClient returns a client. Redirects are limited, never leave https
+// for http, and carry no Referer: the client would otherwise hand the
+// private feed URL to wherever the redirect points.
 func NewClient(userAgent string, timeout time.Duration) *Client {
 	return &Client{
 		ua: userAgent,
 		http: &http.Client{
 			Timeout: timeout,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				req.Header.Del("Referer")
 				if len(via) >= 3 {
 					return errors.New("too many redirects")
+				}
+				if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+					return errors.New("redirect leaves https")
 				}
 				return CheckURL(req.URL.String())
 			},

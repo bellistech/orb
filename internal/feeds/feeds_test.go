@@ -163,6 +163,42 @@ func TestFetch(t *testing.T) {
 	}
 }
 
+// A redirect must not carry the private news URL to wherever it points
+// (Go's client sends it as Referer), nor leave https for plain http.
+func TestRedirects(t *testing.T) {
+	var referer string
+	dst := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		referer = r.Header.Get("Referer")
+		w.Write([]byte(weatherJSON))
+	}))
+	defer dst.Close()
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(weatherJSON))
+	}))
+	defer plain.Close()
+	src := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/secret_path_123.json":
+			http.Redirect(w, r, dst.URL+"/moved.json", http.StatusFound)
+		case "/down":
+			http.Redirect(w, r, plain.URL+"/x.json", http.StatusFound)
+		}
+	}))
+	defer src.Close()
+	c := NewClient("orb/test", 2*time.Second)
+	c.http.Transport = src.Client().Transport // trusts the test certificate, shared by both TLS servers
+	ctx := context.Background()
+	if _, err := c.Get(ctx, src.URL+"/secret_path_123.json"); err != nil {
+		t.Fatalf("https redirect: %v", err)
+	}
+	if referer != "" {
+		t.Errorf("the redirect target got Referer %q", referer)
+	}
+	if _, err := c.Get(ctx, src.URL+"/down"); err == nil {
+		t.Errorf("followed a redirect from https to plain http")
+	}
+}
+
 func TestCheckURL(t *testing.T) {
 	for _, ok := range []string{"https://example.com/x.json", "http://127.0.0.1:8080/x", "http://[::1]/x", "http://localhost/x"} {
 		if err := CheckURL(ok); err != nil {
