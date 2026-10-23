@@ -44,7 +44,11 @@ console login, no desktop or compositor: 8x8 tiles scaled up with hard pixel
 edges, a hand-drawn pixel font, and windows styled after 16-bit console RPG
 menus. A crystal orb swirls in the header, sparkles glint along window
 edges, values glide between samples, titles shimmer, letters glow as the
-reader types them, stars twinkle behind the windows.
+reader types them. Behind the windows the sky follows the local clock:
+stars and the moon in its phase at night, a glow at sunrise and sunset, a
+sun crossing by day, all tinted by the theme; with a weather feed it
+clouds over, rains, snows, fogs up or flashes with lightning. Sunrise and
+sunset are reckoned from the date alone (orb knows no location).
 
 ```bash
 orb -gfx -scale 3       # pixel size, 1..8 (3, the default = 143x60 tiles on 3440x1440)

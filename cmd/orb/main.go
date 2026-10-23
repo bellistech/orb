@@ -294,7 +294,7 @@ func runOnce(size string, gfxMode bool, scale int, v ui.View, th *ui.Theme) {
 		fail("%v", err)
 	}
 	f := gfx.NewFrame(cols*gfx.Tile, rows*gfx.Tile)
-	gfx.Rasterize(f, ui.Render(cols, rows, v, th, true), th, gfx.Anim{})
+	gfx.Rasterize(f, ui.Render(cols, rows, v, th, true), th, gfx.Anim{Sky: gfx.NewSky(v.Now, v.Feeds)})
 	if err := gfx.WritePNG(os.Stdout, f, scale); err != nil {
 		fail("%v", err)
 	}

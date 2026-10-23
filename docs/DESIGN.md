@@ -202,8 +202,28 @@ animation was asked for, and a still title would only delay the
 dashboard) and in terminals (opened over SSH to look at something: the
 first sample lands in 250 ms, and block art cannot carry the look).
 
+The sky (`gfx/sky.go`) is the backdrop in the gaps between windows, a
+function of the wall clock, the weather feed's current conditions and the
+animation clock, so frames are reproducible. Day length comes from the
+solar declination at a fixed mid-northern latitude (35°N), centered on
+noon standard time; no location is configured or looked up. The gradient
+runs from the theme background, lifted toward the cool end of its ramp by
+day and its warm end around sunrise and sunset, greyed by overcast. The
+sun (or the moon, phase from the date) moves on an arc from the bottom
+left corner over the widest gap near the top, its glow spilling through
+the gaps. The gradient and body are painted into the base layer and
+repainted only when a quantized state changes (light in 48 steps, the body
+a pixel): a minute or so apart. Stars, drifting clouds, fog wisps, rain,
+snow and lightning are a layer over it, drawn only on open backdrop in
+blank tiles (never over a window or glyph), with pixels from the last
+frame not drawn again restored from the base. Particles get spans of their
+own so the blit stays small. Weather: partly cloudy a few clouds; cloudy
+more, grey sky; fog a lifted haze and wisps; rain and snow particles under
+cloud; storm heavy rain and a double flash every few seconds. `-fps 0`
+freezes it; the zero sky is the plain starfield.
+
 Animation (default 15 fps): values ease out over 600 ms after each sample,
-a light sweeps each title every 7 s (staggered), stars twinkle in the gaps.
+a light sweeps each title every 7 s (staggered), the sky moves in the gaps.
 The backdrop and windows are a cached base layer; a tile is restored and
 redrawn only when its cell or shimmer changed, stars twinkle in 6 steps, and
 only changed spans are copied to the framebuffer. Layout reruns only during a

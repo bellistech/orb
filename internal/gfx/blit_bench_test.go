@@ -42,6 +42,33 @@ func BenchmarkAnimatedFrameBlit(b *testing.B) {
 	}
 }
 
+// Steady-state animated frames over a weather sky at scale 3: the
+// dashboard idle while rain, snow or a storm moves behind it.
+func BenchmarkSkyFrameBlit(b *testing.B) {
+	for _, k := range []struct {
+		name string
+		kind feeds.Kind
+	}{{"clear", feeds.Clear}, {"cloudy", feeds.Cloudy}, {"rain", feeds.Rain}, {"snow", feeds.Snow}, {"storm", feeds.Storm}, {"fog", feeds.Fog}} {
+		b.Run(k.name, func(b *testing.B) {
+			pf, _ := newPixelFormat(xrgb())
+			fb := &FB{format: pf, W: 3440, H: 1440, stride: 13824}
+			fb.mem = make([]byte, fb.stride*fb.H)
+			cols, rows, px, py, _ := Grid(fb.W, fb.H, 3)
+			snap := sys.Demo(time.Unix(1_800_000_000, 0))
+			th := ui.Themes[0]
+			c := ui.Render(cols, rows, ui.View{Snap: snap}, th, true)
+			sky := Sky{Now: time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC), Kind: k.kind}
+			r := NewRenderer()
+			r.Draw(c, th, Anim{T: 99, Sky: sky})
+			fb.Blit(r.Frame(), nil, 3, px, py)
+			b.ResetTimer()
+			for i := range b.N {
+				fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: 100 + float64(i)/15, Sky: sky}), 3, px, py)
+			}
+		})
+	}
+}
+
 // Worst case: a tween frame, where every value moved and the dashboard is
 // laid out again.
 func BenchmarkTweenFrame(b *testing.B) {

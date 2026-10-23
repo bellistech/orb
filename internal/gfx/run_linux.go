@@ -164,7 +164,7 @@ func Run(o Options) error {
 			reader.Apply(&v)
 			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), th, page, fv.Version, as}
 		}
-		a := Anim{}
+		a := Anim{Sky: NewSky(now, fv)}
 		if o.FPS > 0 {
 			a.T = now.Sub(start).Seconds()
 		}

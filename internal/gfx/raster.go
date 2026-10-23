@@ -38,9 +38,11 @@ func (f *Frame) fill(x, y, w, h int, v uint32) {
 	}
 }
 
-// Anim carries time for animated effects. The zero value is a still frame.
+// Anim carries time for animated effects. The zero value is a still
+// frame over the plain starfield.
 type Anim struct {
-	T float64 // seconds
+	T   float64 // seconds
+	Sky Sky     // day, night and weather behind the windows
 }
 
 // Rasterize draws canvas c into f, which must be c.W*Tile x c.H*Tile. It is
@@ -69,6 +71,19 @@ type Renderer struct {
 	dirty       []Span // per row, X0 >= X1 means clean
 	prevOver    []rect // overlay rects drawn last frame
 	orbPal      *orbPalette
+
+	// The sky: its state and colors, which tiles its last repaint changed,
+	// which tiles leave the backdrop showing, per-pixel bits (px*) and the
+	// layer pixels drawn last frame and this one.
+	cols, zenith   int
+	sky            skyState
+	skyPal         *skyPalette
+	skyDirty       []bool
+	blank          []bool
+	px             []uint32
+	open           []int32 // open backdrop pixels
+	layOld, layNew []int32
+	skySpans       []Span // changed layer pixels, apart from the row spans
 }
 
 type star struct {
@@ -82,17 +97,19 @@ func NewRenderer() *Renderer { return &Renderer{} }
 // Frame is the current composed frame. Callers must not modify it.
 func (r *Renderer) Frame() *Frame { return r.frame }
 
-// Draw updates the frame to show c and returns the rows that changed.
+// Draw updates the frame to show c and returns the spans that changed:
+// one per changed row, plus small ones for sky particles outside it.
 func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 	if c == nil || t == nil {
 		return nil
 	}
 	if key := baseKey(c, t); r.frame == nil || r.frame.W != c.W*Tile || r.frame.H != c.H*Tile || key != r.key {
-		r.rebuild(c, t, key)
+		r.rebuild(c, t, key, a.Sky)
 	}
 	for i := range r.dirty {
 		r.dirty[i] = Span{Y: i, X0: r.frame.W, X1: 0}
 	}
+	r.updateSky(t, a.Sky)
 
 	// Tiles under last frame's or this frame's overlays are redrawn so
 	// overlays can move and fade without trails.
@@ -133,7 +150,10 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 			cell := c.CellAt(x, y)
 			wi, onTop := tops[i]
 			glow := shimmer(c, wi, onTop, x, a)
-			if !full && cell == r.cells[i] && glow == r.glow[i] && !forced[i] {
+			r.blank[i] = blankTile(cell, t, onTop)
+			sky := r.skyDirty[i]
+			r.skyDirty[i] = false
+			if !full && cell == r.cells[i] && glow == r.glow[i] && !forced[i] && !sky {
 				continue
 			}
 			r.restoreTile(x, y)
@@ -149,7 +169,7 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 			r.cells[i], r.glow[i] = cell, glow
 		}
 	}
-	r.drawStars(t, a)
+	r.drawSkyLayer(a)
 	r.prevOver = r.prevOver[:0]
 	for _, o := range ovs {
 		o.draw(r.frame)
@@ -166,6 +186,12 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 			out = append(out, d)
 		}
 	}
+	for _, sp := range r.skySpans {
+		if d := r.dirty[sp.Y]; sp.X0 < d.X0 || sp.X1 > d.X1 {
+			out = append(out, sp)
+		}
+	}
+	r.skySpans = r.skySpans[:0]
 	return out
 }
 
@@ -179,27 +205,43 @@ func baseKey(c *canvas.Canvas, t *ui.Theme) string {
 	return string(b)
 }
 
-func (r *Renderer) rebuild(c *canvas.Canvas, t *ui.Theme, key string) {
+func (r *Renderer) rebuild(c *canvas.Canvas, t *ui.Theme, key string, s Sky) {
 	w, h := c.W*Tile, c.H*Tile
 	r.key = key
 	r.base, r.frame = NewFrame(w, h), NewFrame(w, h)
-	bg := rgb(t.BG)
+	// Windows over an impossible color: what is left is open sky.
+	const none = 1 << 24
 	for i := range r.base.Pix {
-		r.base.Pix[i] = bg
+		r.base.Pix[i] = none
 	}
 	for _, win := range c.Windows {
 		drawWindow(r.base, win, t)
 	}
+	r.px = make([]uint32, w*h)
+	r.open = r.open[:0]
+	for i, v := range r.base.Pix {
+		if v == none {
+			r.px[i] = pxOpen
+			r.open = append(r.open, int32(i))
+		}
+	}
+	r.cols = c.W
+	r.zenith = r.zenithRow()
+	r.sky = skyStateOf(s, w, h, r.zenith)
+	r.skyPal = newSkyPalette(t, r.sky, h)
+	r.paintSky(rect{0, 0, w, h}, false)
 	copy(r.frame.Pix, r.base.Pix)
 	// Stars only where the backdrop shows through.
 	r.stars = r.stars[:0]
 	for y := range h {
 		for x := range w {
-			if hv := hash(uint32(x), uint32(y)); hv%997 == 0 && r.base.Pix[y*w+x] == bg {
+			if hv := hash(uint32(x), uint32(y)); hv%997 == 0 && r.px[y*w+x]&pxOpen != 0 {
 				r.stars = append(r.stars, star{x, y, hv})
 			}
 		}
 	}
+	r.skyDirty, r.blank = make([]bool, c.W*c.H), make([]bool, c.W*c.H)
+	r.layOld, r.layNew = r.layOld[:0], r.layNew[:0]
 	r.cells, r.glow, r.prevOver = nil, nil, nil
 	r.dirty = make([]Span, h)
 	for i := range r.dirty {
@@ -212,6 +254,9 @@ func (r *Renderer) restoreTile(cx, cy int) {
 	for y := cy * Tile; y < (cy+1)*Tile; y++ {
 		o := y*w + cx*Tile
 		copy(r.frame.Pix[o:o+Tile], r.base.Pix[o:o+Tile])
+		for i := o; i < o+Tile; i++ {
+			r.px[i] &= pxOpen // the sky layer here is gone
+		}
 	}
 }
 
@@ -224,25 +269,6 @@ func (r *Renderer) mark(x, y, w, h int) {
 
 // starLevels quantizes twinkle brightness so most frames change no stars.
 const starLevels = 6
-
-// drawStars twinkles the backdrop stars, touching only those whose
-// brightness step changed.
-func (r *Renderer) drawStars(t *ui.Theme, a Anim) {
-	for _, s := range r.stars {
-		lvl := uint8(2)
-		if a.T != 0 {
-			v := 0.5 + 0.5*math.Sin(a.T*(0.6+float64(s.h%7)/5)+float64(s.h%628)/100)
-			lvl = uint8(v * (starLevels - 1))
-		}
-		px := &r.frame.Pix[s.y*r.frame.W+s.x]
-		want := rgb(ui.Mix(t.BG, t.FG, 0.15+0.45*float64(lvl)/(starLevels-1)))
-		if *px == want {
-			continue
-		}
-		*px = want
-		r.mark(s.x, s.y, 1, 1)
-	}
-}
 
 // shimmer is how much a title cell is brightened by the light sweeping
 // across each window's title every few seconds, staggered per window.
