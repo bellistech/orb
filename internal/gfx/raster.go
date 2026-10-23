@@ -69,6 +69,7 @@ type Renderer struct {
 	glow        []float64
 	stars       []star
 	dirty       []Span // per row, X0 >= X1 means clean
+	dirty2      []Span // a second run per row, apart from the first
 	prevOver    []rect // overlay rects drawn last frame
 	orbPal      *orbPalette
 	dogPal      *dogPalCache
@@ -114,6 +115,7 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 	}
 	for i := range r.dirty {
 		r.dirty[i] = Span{Y: i, X0: r.frame.W, X1: 0}
+		r.dirty2[i] = Span{Y: i, X0: r.frame.W, X1: 0}
 	}
 	r.updateSky(t, a.Sky)
 
@@ -181,13 +183,17 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 	}
 
 	out := r.dirty[:0:0]
-	for _, d := range r.dirty {
+	for i, d := range r.dirty {
 		if d.X0 < d.X1 {
 			out = append(out, d)
 		}
+		if d2 := r.dirty2[i]; d2.X0 < d2.X1 {
+			out = append(out, d2)
+		}
 	}
 	for _, sp := range r.skySpans {
-		if d := r.dirty[sp.Y]; sp.X0 < d.X0 || sp.X1 > d.X1 {
+		d, d2 := r.dirty[sp.Y], r.dirty2[sp.Y]
+		if (sp.X0 < d.X0 || sp.X1 > d.X1) && (sp.X0 < d2.X0 || sp.X1 > d2.X1) {
 			out = append(out, sp)
 		}
 	}
@@ -255,9 +261,10 @@ func (r *Renderer) rebuild(c *canvas.Canvas, t *ui.Theme, key string, s Sky) {
 	}
 	r.layOld, r.layNew = r.layOld[:0], r.layNew[:0]
 	r.cells, r.glow, r.prevOver = nil, nil, nil
-	r.dirty = make([]Span, h)
+	r.dirty, r.dirty2 = make([]Span, h), make([]Span, h)
 	for i := range r.dirty {
 		r.dirty[i] = Span{Y: i, X0: 0, X1: w}
+		r.dirty2[i] = Span{Y: i, X0: w, X1: 0}
 	}
 }
 
@@ -273,9 +280,36 @@ func (r *Renderer) restoreTile(cx, cy int) {
 }
 
 func (r *Renderer) mark(x, y, w, h int) {
-	for yy := y; yy < y+h && yy < len(r.dirty); yy++ {
-		d := &r.dirty[yy]
-		d.X0, d.X1 = min(d.X0, x), max(d.X1, x+w)
+	for yy := max(y, 0); yy < y+h && yy < len(r.dirty); yy++ {
+		r.markRow(yy, x, x+w)
+	}
+}
+
+// markRow adds [x0, x1) to row y's changed runs. A row keeps up to two
+// runs, so two things animating far apart on one row (the orb at the left
+// of the header, the dog at the right) blit as two short runs instead of
+// one spanning the screen.
+func (r *Renderer) markRow(y, x0, x1 int) {
+	const gap = 4 * Tile // closer than this, one run is cheaper
+	a, b := &r.dirty[y], &r.dirty2[y]
+	near := func(s *Span, x0, x1 int) bool { return x0 <= s.X1+gap && x1 >= s.X0-gap }
+	grow := func(s *Span, x0, x1 int) { s.X0, s.X1 = min(s.X0, x0), max(s.X1, x1) }
+	switch {
+	case a.X0 >= a.X1:
+		a.X0, a.X1 = x0, x1
+	case near(a, x0, x1):
+		grow(a, x0, x1)
+	case b.X0 >= b.X1:
+		b.X0, b.X1 = x0, x1
+		return
+	case near(b, x0, x1):
+		grow(b, x0, x1)
+	default:
+		grow(a, x0, x1)
+	}
+	if b.X0 < b.X1 && near(a, b.X0, b.X1) {
+		grow(a, b.X0, b.X1)
+		b.X0, b.X1 = r.frame.W, 0
 	}
 }
 

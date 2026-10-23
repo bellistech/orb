@@ -176,7 +176,7 @@ hot end of the theme ramp, with a glowing core, darker limb, highlight, rim
 and a pulsing halo blended over the frame behind it. Terminals get a 6x6
 block-art version.
 
-The dog (prototype): a 20x16 pixel companion in the header's free cells
+The dog: a 20x16 pixel companion in the header's free cells
 between the identity lines and the date (`canvas.Pets`, graphics only).
 Its mood is a status signal (`ui.DogMood`): naps when the CPU (mean of
 the last 3 samples) is under 15%, sits and wags under 45%, trots laps
@@ -236,7 +236,8 @@ Animation (default 15 fps): values ease out over 600 ms after each sample,
 a light sweeps each title every 7 s (staggered), the sky moves in the gaps.
 The backdrop and windows are a cached base layer; a tile is restored and
 redrawn only when its cell or shimmer changed, stars twinkle in 6 steps, and
-only changed spans are copied to the framebuffer. Layout reruns only during a
+only changed spans (up to two runs per row, so the orb and the dog on one row
+blit apart) are copied to the framebuffer. Layout reruns only during a
 tween or when the clock second ticks. Idle frames cost ~0.1 ms at any scale.
 
 ## Themes

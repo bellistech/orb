@@ -12,6 +12,26 @@ import (
 	"orb/internal/ui"
 )
 
+// Changes far apart on a row stay two runs; close ones merge, a third far
+// one widens the first, and every marked pixel stays covered.
+func TestMarkKeepsTwoRuns(t *testing.T) {
+	r := &Renderer{frame: NewFrame(1000, 1), dirty: []Span{{X0: 1000}}, dirty2: []Span{{X0: 1000}}}
+	r.mark(10, 0, 30, 1)
+	r.mark(900, 0, 20, 1)
+	if a, b := r.dirty[0], r.dirty2[0]; a != (Span{0, 10, 40}) || b != (Span{0, 900, 920}) {
+		t.Fatalf("far marks: %v %v", a, b)
+	}
+	r.mark(45, 0, 5, 1)  // near the first
+	r.mark(880, 0, 5, 1) // near the second
+	if a, b := r.dirty[0], r.dirty2[0]; a != (Span{0, 10, 50}) || b != (Span{0, 880, 920}) {
+		t.Fatalf("near marks: %v %v", a, b)
+	}
+	r.mark(500, 0, 5, 1) // far from both: the first run takes it
+	if a, b := r.dirty[0], r.dirty2[0]; a != (Span{0, 10, 505}) || b != (Span{0, 880, 920}) {
+		t.Fatalf("third run: %v %v", a, b)
+	}
+}
+
 func TestGlyphLandsInItsTile(t *testing.T) {
 	th := ui.Themes[0]
 	c := canvas.New(2, 1, th.BG)
