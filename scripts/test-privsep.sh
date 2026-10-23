@@ -8,9 +8,11 @@ orb=$1
 port=$((1100 + $$ % 800))
 python3 -I -c "import socket,time;s=socket.socket();s.bind(('127.0.0.1',$port));s.listen();time.sleep(6)" &
 sleep 0.5
+# No config: as root, orb opens only a regular file the invoking user owns.
+nocfg=/nonexistent/orb-config
 row() { sed 's/\x1b\[[0-9;]*m//g' | grep -o "tcp  *$port .\{0,75\}" | tr -s ' '; }
-with=$(SUDO_UID=1000 SUDO_GID=1000 "$orb" -config /dev/null -page net -once 215x45 | row)
-without=$(setpriv --reuid=1000 --regid=1000 --clear-groups "$orb" -config /dev/null -page net -once 215x45 | row)
+with=$(SUDO_UID=1000 SUDO_GID=1000 "$orb" -config $nocfg -page net -once 215x45 | row)
+without=$(setpriv --reuid=1000 --regid=1000 --clear-groups "$orb" -config $nocfg -page net -once 215x45 | row)
 wait
 echo "as root:  $with"
 echo "as user:  $without"
