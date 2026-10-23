@@ -12,11 +12,12 @@ import (
 )
 
 // Reader pacing: the headline shows alone briefly, then the summary types
-// out at roughly reading speed, page by page, holding each full page.
+// out quickly, page by page, and each full page holds long enough to read
+// (Stevie, 2026-10-23: type 5x faster, hold 3x longer; was 40/s and 5 s).
 const (
-	typeRate    = 40 // characters per second
+	typeRate    = 200 // characters per second
 	readerIntro = 1500 * time.Millisecond
-	readerHold  = 5 * time.Second // pause once a page is fully typed
+	readerHold  = 15 * time.Second // pause once a page is fully typed
 	maxStories  = 48
 	readerWidth = 72 // comfortable line length for reading
 )

@@ -132,9 +132,33 @@ func drawListen(r canvas.Region, v *View, t *Theme) {
 	}
 }
 
+// listenKey identifies a listening port across IPv4 and IPv6: "tcp:22".
+func listenKey(proto string, port uint16) string {
+	return strings.TrimSuffix(proto, "6") + ":" + fmt.Sprint(port)
+}
+
+// serverIsLocal reports whether a connection's server end is this host: its
+// local port is one we listen on (inbound). Otherwise the peer serves; UDP
+// with no listener on either side takes the lower port as the server.
+func serverIsLocal(s sys.Socket, listening map[string]bool) bool {
+	if listening[listenKey(s.Proto, s.Local.Port())] {
+		return true
+	}
+	if strings.HasPrefix(s.Proto, "udp") {
+		return s.Local.Port() < s.Remote.Port()
+	}
+	return false
+}
+
 func drawConns(r canvas.Region, v *View, t *Theme) {
 	var cs []sys.Socket
 	est := 0
+	listening := map[string]bool{}
+	for _, s := range v.Snap.Sockets {
+		if s.Listening() {
+			listening[listenKey(s.Proto, s.Local.Port())] = true
+		}
+	}
 	for _, s := range v.Snap.Sockets {
 		if !s.Listening() {
 			cs = append(cs, s)
@@ -157,7 +181,7 @@ func drawConns(r canvas.Region, v *View, t *Theme) {
 	showLocal := rest >= 50
 	localW, remoteW := 0, rest
 	if showLocal {
-		localW = rest * 45 / 100
+		localW = min(rest*45/100, 46) // the longest IPv6 [addr]:port
 		remoteW = rest - localW - 3
 	}
 	x := 0
@@ -165,11 +189,14 @@ func drawConns(r canvas.Region, v *View, t *Theme) {
 	x += protoW + 1
 	in.Text(x, 0, "STATE", t.Faint)
 	x += stateW + 1
+	// Arrows run client (ephemeral port) -> server (its service port).
 	if showLocal {
-		in.Text(x, 0, "LOCAL", t.Faint)
+		in.Text(x, 0, "CLIENT", t.Faint)
 		x += localW + 3
+		in.Text(x, 0, "SERVER", t.Faint)
+	} else {
+		in.Text(x, 0, "PEER", t.Faint)
 	}
-	in.Text(x, 0, "PEER", t.Faint)
 	in.Text(in.W-procW, 0, "PROCESS", t.Faint)
 	if len(cs) == 0 {
 		in.Text(0, 1, "no connections", t.Dim)
@@ -190,17 +217,26 @@ func drawConns(r canvas.Region, v *View, t *Theme) {
 		x += protoW + 1
 		in.Text(x, y, s.State, stateColor(t, s.State))
 		x += stateW + 1
+		client, server := s.Local, s.Remote
+		if serverIsLocal(s, listening) {
+			client, server = s.Remote, s.Local
+		}
+		svc := sys.Service(s.Proto, server.Port())
+		var px int
 		if showLocal {
-			in.Text(x, y, trunc(s.Local.String(), localW), t.Dim)
+			in.Text(x, y, trunc(client.String(), localW), t.Dim)
 			in.Text(x+localW+1, y, "→", t.Faint)
 			x += localW + 3
+			px = in.Text(x, y, trunc(server.String(), remoteW), t.FG)
+		} else {
+			// Only the peer fits: the arrow says which way it points.
+			arrow := "→ " // we are the client, the peer serves
+			if server == s.Local {
+				arrow = "← " // the peer is a client of ours
+			}
+			px = in.Text(x, y, arrow, t.Faint)
+			px = in.Text(px, y, trunc(s.Remote.String(), remoteW-2), t.FG)
 		}
-		peer := s.Remote.String()
-		svc := sys.Service(s.Proto, s.Remote.Port())
-		if svc == "" {
-			svc = sys.Service(s.Proto, s.Local.Port())
-		}
-		px := in.Text(x, y, trunc(peer, remoteW), t.FG)
 		if svc != "" && px+1+len(svc) < x+remoteW {
 			in.Text(px+1, y, svc, t.Dim)
 		}

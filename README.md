@@ -6,7 +6,7 @@ View-only host health dashboard for the terminal. Built for a big monitor across
 orb                     # live dashboard in the terminal
 orb -gfx                # pixel graphics on the local console (no desktop)
 orb -page news          # start on news & weather (or -page net)
-orb -theme arcane       # phosphor (default), gizzard, lantern, chrono, arcane
+orb -theme arcane       # phosphor, gizzard (default), lantern, chrono, arcane, crimson
 orb -interval 2s        # sample every 2s
 orb -demo               # synthetic data
 orb -once 215x45        # print one frame and exit
@@ -23,10 +23,10 @@ Flags override it. Keep it `chmod 600`: orb warns otherwise, since feed
 URLs may be private.
 
 ```
-theme = phosphor            # phosphor, gizzard, lantern, chrono, arcane
+theme = gizzard             # phosphor, gizzard, lantern, chrono, arcane, crimson
 page = dash                 # dash, news or net
 interval = 1s
-scale = 4                   # graphics mode
+scale = 3                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation
 news_url = https://example.com/news.json
 weather_url = https://example.com/weather.json
@@ -46,7 +46,7 @@ edges, values glide between samples, titles shimmer, letters glow as the
 reader types them, stars twinkle behind the windows.
 
 ```bash
-orb -gfx -scale 4       # pixel size, 1..8 (4 = 107x45 tiles on 3440x1440)
+orb -gfx -scale 3       # pixel size, 1..8 (3, the default = 143x60 tiles on 3440x1440)
 orb -gfx -fps 0         # no animation, redraw once per sample
 ```
 

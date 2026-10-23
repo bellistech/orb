@@ -8,7 +8,7 @@ Well) later as more panels.
 
 | Target | Size | Color |
 |---|---|---|
-| Desk: 3440x1440 ultrawide, `-gfx` on the VT | 107x45 tiles at scale 4 | 24-bit pixels |
+| Desk: 3440x1440 ultrawide, `-gfx` on the VT | 143x60 tiles at scale 3 (default) | 24-bit pixels |
 | Desk: bare VT without `-gfx` | 430x90 at 8x16 | 16 colors (auto-downsampled) |
 | SSH from a laptop/desktop terminal | anything >= 80x24 | truecolor |
 
@@ -54,17 +54,18 @@ assumes a size.
 ## News & weather page
 
 `w` switches to it, `d` back; tabs in the header's top border show which
-page is up. Weather on the left: current conditions with 12x8 pixel art
+page is up. The six headline windows fill the top half across the whole
+width; the bottom half holds the weather and the reader. Weather: current conditions with 12x8 pixel art
 (rain, snow and storms fall, one step per second), the hourly temperature as
 a heat-colored curve over temperatures, mini icons and hours, and a five-day
 forecast with range bars on a shared min..max track. Temperatures use the
 heat ramp from 20°F (cool) to 105°F (hot).
 
-On the right, six headline windows on top and the reader below: one story at a time in a random order
+The reader shows one story at a time in a random order
 (seeded by the fetch, so stable between frames), only items whose feed description holds a real summary (80+
 characters after stripping HTML and boilerplate). The headline shows for
-1.5 s, then the body types at 40 characters/s into
-lines of at most 72 characters; each typed page holds 5 s, with a blinking
+1.5 s, then the body types at 200 characters/s into
+lines of at most 72 characters; each typed page holds 15 s, with a blinking
 ▼ when another follows. The schedule is a pure function of time since the
 news was fetched, so every frame is computable without state. Space pauses
 it (`ui.ReaderClock`): the clock freezes and the reader keeps the news it
@@ -73,7 +74,8 @@ story back (up/left) or on (down/right) from its headline, resuming if
 paused. In graphics mode the reader's text is double size: each glyph spans
 2x2 tiles (`canvas.Cell.Quad`) and every tile draws its own quarter, so tile
 diffing still works. The headline
-windows show one line per headline, pages rotating every 15 s with
+windows show one line per headline, two when every headline fits that way,
+pages rotating every 15 s with
 staggered starts. The page lays out every frame while typing; tile diffing
 keeps a frame at ~0.15 ms. Feeds are JSON caches,
 configured in `~/.config/orb/config`.
@@ -108,7 +110,7 @@ area graphs, block-font clock.
 
 ## Graphics mode
 
-16-bit console look. Logical frame of 8x8 tiles (107x45 on the ultrawide),
+16-bit console look. Logical frame of 8x8 tiles (143x60 on the ultrawide at the default scale 3),
 scaled up with hard edges. Hand-drawn 5x7 font with a drop shadow, bold as a
 double strike. Panels become RPG-menu windows: dark outline, top-lit bevel,
 vertical gradient fill, title cut into the border as a tab. Blocks, braille
@@ -152,8 +154,9 @@ tween or when the clock second ticks. Idle frames cost ~0.1 ms at any scale.
 
 ## Themes
 
-`phosphor` (default, amber CRT), `gizzard` (psychedelic), `lantern` (soft
-pastel), `chrono` (blue RPG windows), `arcane` (violet, mystical). Each theme is a background, text tones,
+`phosphor` (amber CRT), `gizzard` (default, psychedelic), `lantern` (soft
+pastel), `chrono` (blue RPG windows), `arcane` (violet, mystical), `crimson`
+(red on black). Each theme is a background, text tones,
 a value ramp, one accent per panel, and optionally explicit window colors.
 
 CPU also gets a per-core heatmap: one strip per core over time, two cores per

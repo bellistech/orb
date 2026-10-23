@@ -31,7 +31,11 @@ const rampSteps = 128
 
 func h(s string) canvas.Color { return canvas.Hex(s) }
 
-// Themes in cycle order; the first is the default.
+// DefaultTheme is the theme orb starts with: the second in the cycle, so t
+// from phosphor lands on it (Stevie, 2026-10-23).
+const DefaultTheme = "gizzard"
+
+// Themes in cycle order.
 var Themes = []*Theme{
 	newTheme(Theme{
 		Name: "phosphor",
@@ -75,6 +79,15 @@ var Themes = []*Theme{
 		Net: h("#6ff7c4"), Disk: h("#ffd27a"), Temp: h("#ff6f91"), Proc: h("#8fb4ff"),
 		WinTop: h("#2a1d6e"), WinBottom: h("#0a0724"), Edge: h("#e6dcff"),
 	}, "#5b6cff", "#9b5bff", "#ff5bd6", "#ff9e5b", "#ffe45b"),
+	newTheme(Theme{
+		Name: "crimson",
+		BG:   h("#050000"), Panel: h("#0c0202"), Track: h("#2a0707"),
+		FG: h("#ffe4e0"), Dim: h("#c97070"), Faint: h("#5e1c1c"),
+		RX: h("#ff8a7a"), TX: h("#ff2e2e"),
+		Host: h("#ff4d4d"), CPU: h("#ff2e2e"), Mem: h("#ff7a6a"), GPU: h("#e0403a"),
+		Net: h("#ff9e8f"), Disk: h("#d83030"), Temp: h("#ff5a3d"), Proc: h("#ffb3a8"),
+		WinTop: h("#3a0505"), WinBottom: h("#0a0000"), Edge: h("#ff3b3b"),
+	}, "#8a1616", "#b81c1c", "#e62222", "#ff5a3a", "#ffd8cc"),
 }
 
 // ThemeByName returns the named theme, or nil.

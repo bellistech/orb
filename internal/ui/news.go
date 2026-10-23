@@ -12,15 +12,24 @@ import (
 // rotateEvery is how long each page of headlines shows.
 const rotateEvery = 15 * time.Second
 
+// newsGrid: the categories fill the top half across the whole width, so
+// each gets room; weather (now, next hours, forecast) and the reader share
+// the bottom half (Stevie, 2026-10-23).
 func newsGrid(w int) []row {
-	weather := slot{nil, 0, []slot{{drawNow, 40, nil}, {drawHourly, 26, nil}, {drawDaily, 34, nil}}}
+	hours := slot{nil, 0, []slot{{drawHourly, 45, nil}, {drawDaily, 55, nil}}}
 	switch {
 	case w >= 180:
-		weather.weight = 30
-		return []row{{1, []slot{weather, {nil, 70, []slot{{newsColumns(3), 42, nil}, {drawReader, 58, nil}}}}}}
+		hours.weight = 34
+		return []row{
+			{50, []slot{{newsColumns(3), 1, nil}}},
+			{50, []slot{{drawNow, 24, nil}, hours, {drawReader, 42, nil}}},
+		}
 	case w >= 100:
-		weather.weight = 36
-		return []row{{1, []slot{weather, {nil, 64, []slot{{newsColumns(2), 42, nil}, {drawReader, 58, nil}}}}}}
+		hours.weight = 36
+		return []row{
+			{50, []slot{{newsColumns(3), 1, nil}}},
+			{50, []slot{{drawNow, 30, nil}, hours, {drawReader, 34, nil}}},
+		}
 	default:
 		out := []row{{24, []slot{{drawReader, 1, nil}}}, {16, []slot{{drawNow, 1, nil}}}, {12, []slot{{drawDaily, 1, nil}}}}
 		for i := range 6 {
@@ -76,8 +85,12 @@ func newsPanel(i int) drawFn {
 		}
 		c := f.News.Categories[i]
 		accent := t.accent(i)
-		// One line per headline: the reader above carries the long form.
+		// One line per headline (the reader carries the long form), two when
+		// the pane holds every headline that way: no cut-off titles.
 		lines := 1
+		if 2*len(c.Items) <= r.H-2 {
+			lines = 2
+		}
 		per := max((r.H-2)/lines, 1)
 		items := c.Items[:min(len(c.Items), 4*per)]
 		pages := max((len(items)+per-1)/per, 1)

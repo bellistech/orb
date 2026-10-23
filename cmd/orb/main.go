@@ -39,12 +39,12 @@ func main() {
 		themeNames[i] = t.Name
 	}
 	cfgPath := flag.String("config", config.DefaultPath(), "config file")
-	theme := flag.String("theme", ui.Themes[0].Name, "color theme: "+strings.Join(themeNames, ", "))
+	theme := flag.String("theme", ui.DefaultTheme, "color theme: "+strings.Join(themeNames, ", "))
 	page := flag.String("page", "dash", "starting page: dash, news or net")
 	interval := flag.Duration("interval", time.Second, "sample interval")
 	once := flag.String("once", "", "print one frame of WxH cells (pixels with -gfx, as PNG) and exit")
 	gfxMode := flag.Bool("gfx", false, "draw pixels on the local console framebuffer instead of a terminal")
-	scale := flag.Int("scale", 4, "graphics mode pixel scale, 1..8")
+	scale := flag.Int("scale", 3, "graphics mode pixel scale, 1..8")
 	fps := flag.Int("fps", 15, "graphics mode animation frames per second, 0 for none")
 	device := flag.String("fb", "/dev/fb0", "graphics mode framebuffer device")
 	newsURL := flag.String("news-url", "", "news JSON URL (better kept in the config file)")

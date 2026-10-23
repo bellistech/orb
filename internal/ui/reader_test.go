@@ -57,16 +57,18 @@ func TestLocateWalksTheSchedule(t *testing.T) {
 		t.Fatalf("plans = %+v", plans)
 	}
 	sec := func(f float64) time.Duration { return time.Duration(f * float64(time.Second)) }
+	// typed is the time n characters take, plus half a character.
+	typed := func(n int) time.Duration { return (2*time.Duration(n) + 1) * time.Second / (2 * typeRate) }
 	for _, tc := range []struct {
 		at    time.Duration
 		want  readerPos
 		label string
 	}{
 		{0, readerPos{0, 0, 0, false}, "intro shows no body"},
-		{readerIntro + sec(0.1), readerPos{0, 0, 4, false}, "typing at 40/s"},
-		{readerIntro + sec(0.5), readerPos{0, 0, 8, true}, "page typed, holding"},
-		{readerIntro + sec(0.2) + readerHold + sec(0.1), readerPos{0, 1, 4, false}, "second page types"},
-		{total + readerIntro + sec(0.1), readerPos{0, 0, 4, false}, "cycle wraps"},
+		{readerIntro + typed(4), readerPos{0, 0, 4, false}, "typing at typeRate"},
+		{readerIntro + typed(8) + sec(1), readerPos{0, 0, 8, true}, "page typed, holding"},
+		{pageDur(plans[0].pages[0], true) + typed(4), readerPos{0, 1, 4, false}, "second page types"},
+		{total + readerIntro + typed(4), readerPos{0, 0, 4, false}, "cycle wraps"},
 		{-sec(1), readerPos{1, 0, 2, true}, "negative elapsed wraps"},
 	} {
 		if got := locate(plans, total, tc.at); got != tc.want {
