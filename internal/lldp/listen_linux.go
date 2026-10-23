@@ -15,6 +15,19 @@ import (
 type Listener struct {
 	fd     int
 	joined map[int]bool
+
+	// ports caches, per interface index, its name and whether frames
+	// from it count (carriesLLDP); refreshed with every Join.
+	ports  map[int]port
+	lookup func(index int) (*net.Interface, error)
+
+	window time.Time // start of the current rate window
+	count  int       // frames decoded in it
+}
+
+type port struct {
+	name string
+	ok   bool
 }
 
 func htons(v uint16) uint16 { return v<<8 | v>>8 }
@@ -28,16 +41,17 @@ func Open() (*Listener, error) {
 	}
 	tv := unix.Timeval{Sec: 1}
 	_ = unix.SetsockoptTimeval(fd, unix.SOL_SOCKET, unix.SO_RCVTIMEO, &tv)
-	return &Listener{fd: fd, joined: map[int]bool{}}, nil
+	return &Listener{fd: fd, joined: map[int]bool{}, ports: map[int]port{}, lookup: net.InterfaceByIndex}, nil
 }
 
 // carriesLLDP: physical ports and their bonds/VLANs, not loopback or
-// container plumbing.
+// container and VM plumbing (veths, bridges, taps), where whoever runs in
+// the container or VM chooses what arrives.
 func carriesLLDP(ifc net.Interface) bool {
 	if ifc.Flags&net.FlagLoopback != 0 || ifc.Flags&net.FlagUp == 0 || len(ifc.HardwareAddr) != 6 {
 		return false
 	}
-	for _, p := range []string{"veth", "docker", "br-", "virbr", "lxdbr", "cni"} {
+	for _, p := range []string{"veth", "docker", "br-", "virbr", "lxdbr", "cni", "vnet", "tap", "macvtap"} {
 		if strings.HasPrefix(ifc.Name, p) {
 			return false
 		}
@@ -50,6 +64,7 @@ func carriesLLDP(ifc net.Interface) bool {
 // Changing an open socket's memberships needs no privilege, so Join keeps
 // working after the drop; call it again to cover interfaces that appear.
 func (l *Listener) Join() {
+	clear(l.ports) // indexes are reused; names change
 	ifs, err := net.Interfaces()
 	if err != nil {
 		return
@@ -74,8 +89,6 @@ const maxPerSecond = 64
 // neighbor. It rejoins every minute for new interfaces.
 func (l *Listener) Run(emit func(iface string, n Neighbor)) error {
 	buf := make([]byte, 1600)
-	names := map[int]string{}
-	window, count := time.Now(), 0
 	lastJoin := time.Now()
 	for {
 		if time.Since(lastJoin) > time.Minute {
@@ -89,30 +102,39 @@ func (l *Listener) Run(emit func(iface string, n Neighbor)) error {
 		if err != nil {
 			return err
 		}
-		ll, ok := from.(*unix.SockaddrLinklayer)
-		if !ok || ll.Pkttype == unix.PACKET_OUTGOING {
-			continue
+		if ll, ok := from.(*unix.SockaddrLinklayer); ok {
+			l.handle(buf[:n], ll.Ifindex, ll.Pkttype, time.Now(), emit)
 		}
-		if time.Since(window) >= time.Second {
-			window, count = time.Now(), 0
+	}
+}
+
+// handle decodes one received frame. The packet socket hears every
+// interface, so frames from ports that do not carry LLDP (a container's
+// veth, a VM's tap) are dropped before they count against the rate limit:
+// a container must not be able to plant neighbors or starve real ones.
+func (l *Listener) handle(frame []byte, ifindex int, pkttype uint8, now time.Time, emit func(string, Neighbor)) {
+	if pkttype == unix.PACKET_OUTGOING {
+		return
+	}
+	p, ok := l.ports[ifindex]
+	if !ok {
+		p = port{name: "#" + strconv.Itoa(ifindex)}
+		if ifc, err := l.lookup(ifindex); err == nil {
+			p = port{name: ifc.Name, ok: carriesLLDP(*ifc)}
 		}
-		if count++; count > maxPerSecond {
-			continue
-		}
-		nb, err := Decode(buf[:n])
-		if err != nil {
-			continue
-		}
-		name, ok := names[ll.Ifindex]
-		if !ok {
-			if ifc, err := net.InterfaceByIndex(ll.Ifindex); err == nil {
-				name = ifc.Name
-			} else {
-				name = "#" + strconv.Itoa(ll.Ifindex)
-			}
-			names[ll.Ifindex] = name
-		}
-		emit(name, nb)
+		l.ports[ifindex] = p
+	}
+	if !p.ok {
+		return
+	}
+	if now.Sub(l.window) >= time.Second {
+		l.window, l.count = now, 0
+	}
+	if l.count++; l.count > maxPerSecond {
+		return
+	}
+	if nb, err := Decode(frame); err == nil {
+		emit(p.name, nb)
 	}
 }
 
