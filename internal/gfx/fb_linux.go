@@ -58,9 +58,9 @@ type FB struct {
 
 // OpenFB opens and maps a framebuffer device such as /dev/fb0.
 func OpenFB(path string) (*FB, error) {
-	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	f, err := openDevice(path, "a framebuffer device", isFB)
 	if err != nil {
-		return nil, fmt.Errorf("open %s: %w (graphics mode needs the video group)", path, err)
+		return nil, fmt.Errorf("%w (graphics mode needs the video group)", err)
 	}
 	fb, err := mapFB(f)
 	if err != nil {

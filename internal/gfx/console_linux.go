@@ -222,9 +222,9 @@ func ResetConsole(tty string) error {
 	if tty == "" {
 		tty = "/dev/tty"
 	}
-	f, err := os.OpenFile(tty, os.O_RDWR, 0)
+	f, err := openDevice(tty, "a virtual console", isConsole)
 	if err != nil {
-		return fmt.Errorf("open %s: %w", tty, err)
+		return err
 	}
 	defer f.Close()
 	fd := int(f.Fd())
