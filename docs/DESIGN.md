@@ -213,8 +213,12 @@ tween or when the clock second ticks. Idle frames cost ~0.1 ms at any scale.
 
 `phosphor` (amber CRT), `gizzard` (default, psychedelic), `lantern` (soft
 pastel), `chrono` (blue RPG windows), `arcane` (violet, mystical), `crimson`
-(red on black). Each theme is a background, text tones,
+(red on black), `sylvan` (forest: canopy-to-loam windows, firefly gold,
+mushroom teal, foxglove violet). Each theme is a background, text tones,
 a value ramp, one accent per panel, and optionally explicit window colors.
+Text holds WCAG contrast on panels and window gradients (`TestThemeContrast`:
+FG 4.5:1, Dim 3:1). `sylvan` is also picked for the bare VT: its text and
+eight accents land on eight different colors of the 16.
 
 CPU also gets a per-core heatmap: one strip per core over time, two cores per
 row via upper half blocks (fg = top core, bg = bottom core).

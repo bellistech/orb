@@ -88,6 +88,15 @@ var Themes = []*Theme{
 		Net: h("#ff9e8f"), Disk: h("#d83030"), Temp: h("#ff5a3d"), Proc: h("#ffb3a8"),
 		WinTop: h("#3a0505"), WinBottom: h("#0a0000"), Edge: h("#ff3b3b"),
 	}, "#8a1616", "#b81c1c", "#e62222", "#ff5a3a", "#ffd8cc"),
+	newTheme(Theme{
+		Name: "sylvan",
+		BG:   h("#050a06"), Panel: h("#0a130c"), Track: h("#1c2e1f"),
+		FG: h("#f0f0de"), Dim: h("#9fb79c"), Faint: h("#4e5d3f"),
+		RX: h("#8de76c"), TX: h("#ead566"),
+		Host: h("#ead566"), CPU: h("#4be1c3"), Mem: h("#d29cea"), GPU: h("#b7e15a"),
+		Net: h("#84c072"), Disk: h("#c0a26c"), Temp: h("#ff7b5a"), Proc: h("#99c0c0"),
+		WinTop: h("#1f3c25"), WinBottom: h("#100c06"), Edge: h("#d4c08a"),
+	}, "#4bc0a2", "#7ee17b", "#d5e769", "#ead557", "#ff903c", "#ff4b3f"),
 }
 
 // ThemeByName returns the named theme, or nil.
