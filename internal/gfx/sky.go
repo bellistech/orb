@@ -317,7 +317,7 @@ func (r *Renderer) paintSky(rc rect, track bool) {
 			if r.base.Pix[i] != v {
 				r.base.Pix[i] = v
 				if track {
-					r.skyDirty[(y/Tile)*r.cols+x/Tile] = true
+					r.redraw[(y/Tile)*r.cols+x/Tile] = true
 				}
 			}
 		}

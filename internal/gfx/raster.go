@@ -72,14 +72,19 @@ type Renderer struct {
 	prevOver    []rect // overlay rects drawn last frame
 	orbPal      *orbPalette
 
-	// The sky: its state and colors, which tiles its last repaint changed,
-	// which tiles leave the backdrop showing, per-pixel bits (px*) and the
-	// layer pixels drawn last frame and this one.
-	cols, zenith   int
+	// Per tile: the window whose top border it is on (-1 none), whether
+	// it must be redrawn (under an overlay, sky repainted), whether it
+	// leaves the backdrop showing.
+	cols   int
+	top    []int32
+	redraw []bool
+	blank  []bool
+
+	// The sky: its state and colors, per-pixel bits (px*) and the layer
+	// pixels drawn last frame and this one.
+	zenith         int
 	sky            skyState
 	skyPal         *skyPalette
-	skyDirty       []bool
-	blank          []bool
 	px             []uint32
 	open           []int32 // open backdrop pixels
 	layOld, layNew []int32
@@ -114,7 +119,6 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 	// Tiles under last frame's or this frame's overlays are redrawn so
 	// overlays can move and fade without trails.
 	ovs := r.overlays(c, t, a)
-	forced := map[int]bool{}
 	force := func(rc rect) {
 		rc = rc.clip(r.frame.W, r.frame.H)
 		if rc.empty() {
@@ -122,7 +126,7 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 		}
 		for ty := rc.y0 / Tile; ty <= (rc.y1-1)/Tile; ty++ {
 			for tx := rc.x0 / Tile; tx <= (rc.x1-1)/Tile; tx++ {
-				forced[ty*c.W+tx] = true
+				r.redraw[ty*c.W+tx] = true
 			}
 		}
 	}
@@ -133,12 +137,6 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 		force(o.r)
 	}
 
-	tops := make(map[int]int, len(c.Windows)*16)
-	for i, w := range c.Windows {
-		for x := w.X + 1; x < w.X+w.W-1; x++ {
-			tops[w.Y*c.W+x] = i
-		}
-	}
 	full := r.cells == nil
 	if full {
 		r.cells = make([]canvas.Cell, c.W*c.H)
@@ -148,12 +146,13 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 		for x := range c.W {
 			i := y*c.W + x
 			cell := c.CellAt(x, y)
-			wi, onTop := tops[i]
+			wi := int(r.top[i])
+			onTop := wi >= 0
 			glow := shimmer(c, wi, onTop, x, a)
 			r.blank[i] = blankTile(cell, t, onTop)
-			sky := r.skyDirty[i]
-			r.skyDirty[i] = false
-			if !full && cell == r.cells[i] && glow == r.glow[i] && !forced[i] && !sky {
+			redraw := r.redraw[i]
+			r.redraw[i] = false
+			if !full && cell == r.cells[i] && glow == r.glow[i] && !redraw {
 				continue
 			}
 			r.restoreTile(x, y)
@@ -240,7 +239,19 @@ func (r *Renderer) rebuild(c *canvas.Canvas, t *ui.Theme, key string, s Sky) {
 			}
 		}
 	}
-	r.skyDirty, r.blank = make([]bool, c.W*c.H), make([]bool, c.W*c.H)
+	r.redraw, r.blank = make([]bool, c.W*c.H), make([]bool, c.W*c.H)
+	// Which window's top border each tile is on, if any.
+	r.top = make([]int32, c.W*c.H)
+	for i := range r.top {
+		r.top[i] = -1
+	}
+	for i, win := range c.Windows {
+		for x := max(win.X+1, 0); x < min(win.X+win.W-1, c.W); x++ {
+			if win.Y >= 0 && win.Y < c.H {
+				r.top[win.Y*c.W+x] = int32(i)
+			}
+		}
+	}
 	r.layOld, r.layNew = r.layOld[:0], r.layNew[:0]
 	r.cells, r.glow, r.prevOver = nil, nil, nil
 	r.dirty = make([]Span, h)
