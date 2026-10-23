@@ -9,7 +9,7 @@ The links page shows who is on the other end of each link. LLDP (IEEE
 802.1AB) is how switches, routers and hosts announce that: every 30 s an
 LLDPDU to 01:80:c2:00:00:0e with chassis, port, name, description,
 capabilities and management addresses. Stevie wants LLDP on both hosts
-(east runs lldpd from 2026-10-23) and orb to read it off the wire itself
+(both run lldpd from 2026-10-23, announcing on the P2P link) and orb to read it off the wire itself
 rather than through lldpd's socket: orb stays one binary with no daemon to
 depend on, and it works on any host where something nearby speaks LLDP.
 
@@ -53,5 +53,7 @@ enp2s0, over the P2P link) and the home router on Wi-Fi.
 ## Consequences
 
 Parsing hostile frames happens in a process that can do nothing but write
-to its pipe. orb sends nothing: it hears LLDP, it does not announce (west
-needs lldpd for that).
+to its pipe. orb sends nothing: it hears LLDP, it does not announce; a
+host that should be seen runs lldpd (east and west do, on the P2P link).
+lldpd and orb's listener coexist: each packet socket gets its own copy, and
+orb ignores the frames its own host sends.
