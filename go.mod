@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	charm.land/bubbletea/v2 v2.1.0
 	github.com/lucasb-eyer/go-colorful v1.4.1
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.49.0
 )
 
 require (
