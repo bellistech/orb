@@ -17,10 +17,12 @@ func netGrid(w int) []row {
 		side.weight = 28
 		return []row{{1, []slot{side, {drawListen, 32, nil}, {drawConns, 40, nil}}}}
 	case w >= 100:
-		side.weight = 45
+		side.weight = 38
+		// Connections are few and long; listening sockets are many and
+		// short, so they take the full width and flow into columns.
 		return []row{
-			{45, []slot{{drawListen, 55, nil}, side}},
-			{55, []slot{{drawConns, 1, nil}}},
+			{45, []slot{{drawConns, 62, nil}, side}},
+			{55, []slot{{drawListen, 1, nil}}},
 		}
 	default:
 		return []row{
@@ -94,6 +96,32 @@ func drawListen(r canvas.Region, v *View, t *Theme) {
 	if in.Empty() || !socketsOrWait(in, v.Snap, t) {
 		return
 	}
+	// Past two minimum-width columns the list flows into columns.
+	ncol := max(1, min((in.W+listenGap)/(listenColW+listenGap), (len(ls)+in.H-2)/max(in.H-1, 1)))
+	colW := (in.W - (ncol-1)*listenGap) / ncol
+	per := in.H - 1
+	for c := 0; c < ncol; c++ {
+		x := c * (colW + listenGap)
+		if c == ncol-1 {
+			colW = in.W - x
+		}
+		lo, hi := min(c*per, len(ls)), min((c+1)*per, len(ls))
+		if c == ncol-1 {
+			hi = len(ls) // the last column counts what is left over
+		}
+		drawListenCol(in.Sub(x, 0, colW, in.H), ls[lo:hi], t)
+	}
+}
+
+// listenColW is the narrowest listening column worth splitting into.
+const (
+	listenColW = 64
+	listenGap  = 3
+)
+
+// drawListenCol draws a header and as many of ls as fit; when more than
+// fit, the last row says how many are left.
+func drawListenCol(in canvas.Region, ls []sys.Socket, t *Theme) {
 	protoW, portW, svcW := 5, 6, 10
 	procW := min(24, max(in.W/4, 8))
 	addrW := in.W - protoW - portW - svcW - procW - 4

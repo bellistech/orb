@@ -87,7 +87,10 @@ service name, address (`*` for any) and owner; connections with state
 colored by meaning (established calm, half-closed warm, TIME-WAIT faint);
 counts by state and top peers; the interfaces panel. Connections read
 CLIENT -> SERVER: the arrow always runs from the ephemeral port to the
-service port. Sockets come from
+service port. Between 100 and 180 cells wide, connections sit top left
+(few, long rows) and listening sockets take the whole bottom width (many,
+short rows), flowing into as many 64-cell columns as they need. Sockets
+come from
 `/proc/net/*`, owners by matching `socket:[inode]` fd links under
 `/proc/<pid>/fd` (bounded walk, ~5 ms). The sampler reads them every 2 s,
 and only while the page asks.
