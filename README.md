@@ -11,6 +11,7 @@ orb                     # live dashboard in the terminal
 orb -gfx                # pixel graphics on the local console (no desktop)
 orb -page news          # start on news & weather (or -page net, -page links)
 orb -theme arcane       # phosphor, gizzard (default), lantern, chrono, arcane, crimson, sylvan
+orb -theme nonagon      # all of them in an endless loop, cross-fading every minute
 orb -interval 2s        # sample every 2s
 orb -demo               # synthetic data
 orb -attract            # cycle the pages after 30s without a key (or press i)
@@ -116,7 +117,7 @@ Flags override it. Keep it `chmod 600`: orb warns otherwise, since feed
 URLs may be private.
 
 ```
-theme = gizzard             # phosphor, gizzard, lantern, chrono, arcane, crimson, sylvan
+theme = gizzard             # phosphor, gizzard, lantern, chrono, arcane, crimson, sylvan, nonagon (cycle)
 page = dash                 # dash, news, net or links
 interval = 1s
 scale = 3                   # graphics mode

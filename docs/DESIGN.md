@@ -220,6 +220,23 @@ Text holds WCAG contrast on panels and window gradients (`TestThemeContrast`:
 FG 4.5:1, Dim 3:1). `sylvan` is also picked for the bare VT: its text and
 eight accents land on eight different colors of the 16.
 
+`nonagon` (after Nonagon Infinity, which loops into itself) is a mode, not
+a palette: it holds each theme for 60 s, then cross-fades to the next over
+3 s, forever. A glance lands mid-fade 5% of the time, and panel hues hold
+still while you work. The fade runs in OKLCh (lightness, chroma, hue each
+move evenly), so red to green passes through amber, not gray; window
+gradients blend in OKLab. It is quantized to 48 eased steps, each one
+`*Theme` cached for as long as it shows: no color moves more than ~0.02
+OKLab (about a just-noticeable difference) per step, the renderers cache it
+like any theme, and the set of colors ever drawn stays finite. A step
+changes every pixel, so graphics mode redraws and blits the whole frame:
+~8.7 ms at 3440x1440 during the 3 s fade, idle frames unchanged; the
+margins outside the tile grid follow (`ClearMargins`). The terminal redraws
+at most every 100 ms during a fade and sleeps until the next one between.
+With `-fps 0` themes switch at the end of each dwell without fading. `t`
+reaches `nonagon` after the last theme and starts the fade to the first at
+once.
+
 CPU also gets a per-core heatmap: one strip per core over time, two cores per
 row via upper half blocks (fg = top core, bg = bottom core).
 

@@ -80,3 +80,30 @@ func TestAttractKeys(t *testing.T) {
 		t.Fatalf("i again: page %v state %v", m.page, m.attract.State())
 	}
 }
+
+// t into the theme cycle starts a redraw chain; a later t ends it, and
+// only the newest chain survives.
+func TestThemeCycleTicks(t *testing.T) {
+	source := func() *sys.Snapshot { return &sys.Snapshot{} }
+	last := ui.Themes[len(ui.Themes)-1].Name
+	m := New(time.Second, last, ui.Dash, source, nil, nil, false)
+	next, cmd := m.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
+	m = next.(Model)
+	if m.theme.Name() != ui.Cycle || cmd == nil {
+		t.Fatalf("t from %s: theme %s, tick %v", last, m.theme.Name(), cmd != nil)
+	}
+	if _, cmd := m.Update(themeMsg{m.themeGen}); cmd == nil {
+		t.Fatal("cycle tick chain stopped")
+	}
+	if _, cmd := m.Update(themeMsg{m.themeGen - 1}); cmd != nil {
+		t.Fatal("stale tick chain kept going")
+	}
+	next, cmd = m.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
+	m = next.(Model)
+	if m.theme.Name() != ui.Themes[0].Name || cmd != nil {
+		t.Fatalf("t out of the cycle: theme %s, tick %v", m.theme.Name(), cmd != nil)
+	}
+	if New(time.Second, ui.Cycle, ui.Dash, source, nil, nil, false).themeTick() == nil {
+		t.Fatal("starting in the cycle schedules no tick")
+	}
+}

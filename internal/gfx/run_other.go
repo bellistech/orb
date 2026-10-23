@@ -16,7 +16,7 @@ type Options struct {
 	Device    string
 	Source    func() *sys.Snapshot
 	Interval  time.Duration
-	Theme     int
+	Theme     string
 	Scale     int
 	FPS       int
 	Page      ui.Page

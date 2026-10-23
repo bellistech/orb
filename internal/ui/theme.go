@@ -24,18 +24,19 @@ type Theme struct {
 	// Graphics-mode windows; unset means derived (see Window).
 	WinTop, WinBottom, Edge canvas.Color
 
-	ramp []canvas.Color // pre-blended, rampSteps entries
+	ramp  []canvas.Color // pre-blended, rampSteps entries
+	blend *blendPair     // set on a Blend of two themes
 }
 
 const rampSteps = 128
 
 func h(s string) canvas.Color { return canvas.Hex(s) }
 
-// DefaultTheme is the theme orb starts with: the second in the cycle, so t
+// DefaultTheme is the theme orb starts with: the second in t order, so t
 // from phosphor lands on it (Stevie, 2026-10-23).
 const DefaultTheme = "gizzard"
 
-// Themes in cycle order.
+// Themes in t order; Cycle comes after the last.
 var Themes = []*Theme{
 	newTheme(Theme{
 		Name: "phosphor",
@@ -143,6 +144,14 @@ func Mix(a, b canvas.Color, t float64) canvas.Color {
 // graphics-mode window with the given accent. Themes may set them
 // explicitly; otherwise they are derived from the panel color and accent.
 func (t *Theme) Window(accent canvas.Color) (top, bottom, edge canvas.Color) {
+	if p := t.blend; p != nil {
+		// Each side's own windows (explicit or derived), blended in OKLab:
+		// derived ones follow the moving accent, and the hue circle's short
+		// way round could flip mid-fade.
+		at, ab, ae := p.a.Window(accent)
+		bt, bb, be := p.b.Window(accent)
+		return Mix(at, bt, p.t), Mix(ab, bb, p.t), Mix(ae, be, p.t)
+	}
 	top, bottom, edge = t.WinTop, t.WinBottom, t.Edge
 	if !top.Set {
 		top = Mix(t.Panel, accent, 0.16)

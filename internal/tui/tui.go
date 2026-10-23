@@ -24,13 +24,18 @@ func frameTick() tea.Cmd {
 	return tea.Tick(frameEvery, func(time.Time) tea.Msg { return frameMsg{} })
 }
 
+// themeMsg redraws when the theme cycle's palette changes. gen tells
+// chains apart: only the one started by the latest theme choice goes on.
+type themeMsg struct{ gen int }
+
 // Model is the Bubble Tea model. It only displays; the keys are d, w and n
 // l (pages), space (pause the news reader), arrows (previous/next story),
 // t (next theme), i (attract mode) and q (quit).
 type Model struct {
 	source   func() *sys.Snapshot
 	interval time.Duration
-	theme    int
+	theme    ui.ThemeSel
+	themeGen int
 	page     ui.Page
 	feeds    func() feeds.View
 	reader   *ui.ReaderClock // pointer: the clock outlives Model copies
@@ -54,12 +59,20 @@ func New(interval time.Duration, theme string, page ui.Page, source func() *sys.
 	}
 	onPage(page)
 	m := Model{interval: interval, page: page, feeds: feedView, reader: &ui.ReaderClock{}, attract: ui.NewAttract(attract), onPage: onPage, source: source}
-	for i, t := range ui.Themes {
-		if t.Name == theme {
-			m.theme = i
-		}
-	}
+	m.theme, _ = ui.SelectTheme(theme, time.Now())
 	return m
+}
+
+// themeTick wakes the model when the theme cycle next changes palette, at
+// most every frameEvery: a fade redraws the whole screen.
+func (m Model) themeTick() tea.Cmd {
+	d := m.theme.Wake(time.Now())
+	if d <= 0 {
+		return nil
+	}
+	d = max(d, frameEvery)
+	gen := m.themeGen
+	return tea.Tick(d, func(time.Time) tea.Msg { return themeMsg{gen} })
 }
 
 func (m Model) sample(d time.Duration) tea.Cmd {
@@ -69,10 +82,11 @@ func (m Model) sample(d time.Duration) tea.Cmd {
 
 // Init takes the first sample shortly after start so rates have a baseline.
 func (m Model) Init() tea.Cmd {
+	cmds := []tea.Cmd{m.sample(250 * time.Millisecond), m.themeTick()}
 	if m.page == ui.News {
-		return tea.Batch(m.sample(250*time.Millisecond), frameTick())
+		cmds = append(cmds, frameTick())
 	}
-	return m.sample(250 * time.Millisecond)
+	return tea.Batch(cmds...)
 }
 
 // setPage shows p; the news page's typing needs frame ticks.
@@ -106,6 +120,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, frameTick()
 		}
 		return m, nil
+	case themeMsg:
+		if msg.gen != m.themeGen {
+			return m, nil
+		}
+		return m, m.themeTick()
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
 	case tea.KeyPressMsg:
@@ -119,7 +138,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "right":
 			m.reader.Skip(1, time.Now())
 		case "t":
-			m.theme = (m.theme + 1) % len(ui.Themes)
+			m.theme = m.theme.Next(time.Now())
+			m.themeGen++
+			return m, m.themeTick()
 		case "d":
 			return m, m.setPage(ui.Dash)
 		case "n":
@@ -139,7 +160,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the current snapshot full-screen.
 func (m Model) View() tea.View {
-	t := ui.Themes[m.theme]
+	t := m.theme.Theme(time.Now(), true)
 	view := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: time.Now(), Attract: m.attract.State()}
 	m.reader.Apply(&view)
 	v := tea.NewView(ui.Render(m.w, m.h, view, t, false).String())

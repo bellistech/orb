@@ -178,6 +178,26 @@ func (fb *FB) Clear(rgb uint32) {
 	}
 }
 
+// ClearMargins fills the screen around a w x h picture at (padX, padY)
+// with one color, leaving the picture alone.
+func (fb *FB) ClearMargins(rgb uint32, w, h, padX, padY int) {
+	px := fb.format.pack(rgb)
+	bpp := fb.format.bytes
+	padX, padY = max(0, min(padX, fb.W)), max(0, min(padY, fb.H))
+	x1, y1 := min(padX+max(w, 0), fb.W), min(padY+max(h, 0), fb.H)
+	row := make([]byte, fb.W*bpp)
+	putRow(row, bpp, px, fb.W)
+	for y := range fb.H {
+		o := y * fb.stride
+		if y < padY || y >= y1 {
+			copy(fb.mem[o:o+fb.W*bpp], row)
+			continue
+		}
+		copy(fb.mem[o:o+padX*bpp], row)
+		copy(fb.mem[o+x1*bpp:o+fb.W*bpp], row)
+	}
+}
+
 // Blit draws the given spans of f scaled up at (padX, padY); nil spans
 // means the whole frame. It returns the number of spans written. Spans that
 // would land outside the screen are skipped, never written.

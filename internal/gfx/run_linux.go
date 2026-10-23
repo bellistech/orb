@@ -21,9 +21,9 @@ type Options struct {
 	Device   string               // framebuffer, e.g. /dev/fb0
 	Source   func() *sys.Snapshot // called once per Interval
 	Interval time.Duration
-	Theme    int // index into ui.Themes
-	Scale    int // pixels per logical pixel
-	FPS      int // animation frames per second; 0 = redraw on samples only
+	Theme    string // a name from ui.ThemeNames()
+	Scale    int    // pixels per logical pixel
+	FPS      int    // animation frames per second; 0 = redraw on samples only
 	Page     ui.Page
 	Feeds    func() feeds.View // may be nil
 	OnPage   func(ui.Page)     // told every page shown (socket/link demand); may be nil
@@ -43,7 +43,11 @@ const tween = 600 * time.Millisecond
 // else (sudo, SSH) it takes a free VT and switches back when done. The console is restored on every exit path,
 // including panics in this goroutine.
 func Run(o Options) error {
-	if o.Source == nil || o.Interval <= 0 || o.FPS < 0 || o.FPS > 60 || o.Theme < 0 || o.Theme >= len(ui.Themes) {
+	if o.Source == nil || o.Interval <= 0 || o.FPS < 0 || o.FPS > 60 {
+		return errors.New("gfx: invalid options")
+	}
+	sel, ok := ui.SelectTheme(o.Theme, time.Now())
+	if !ok {
 		return errors.New("gfx: invalid options")
 	}
 	// Signals first: once the VT is in process mode, an unhandled
@@ -90,7 +94,7 @@ func Run(o Options) error {
 		}
 	}()
 
-	theme, page := o.Theme, o.Page
+	page := o.Page
 	want := o.OnPage
 	if want == nil {
 		want = func(ui.Page) {}
@@ -111,7 +115,8 @@ func Run(o Options) error {
 	r := NewRenderer()
 	var c *canvasCache
 	active := true
-	fb.Clear(rgb(ui.Themes[theme].BG))
+	bg := sel.Theme(start, o.FPS > 0).BG
+	fb.Clear(rgb(bg))
 	attract := ui.NewAttract(o.Attract)
 	// The intro plays while the first samples come in; it needs animation.
 	var intro *Intro
@@ -135,8 +140,8 @@ func Run(o Options) error {
 		if !active {
 			return
 		}
-		th := ui.Themes[theme]
 		now := time.Now()
+		th := sel.Theme(now, o.FPS > 0)
 		if intro != nil {
 			// Until a sample after the first lands there are no rates.
 			el := now.Sub(start).Seconds()
@@ -153,15 +158,20 @@ func Run(o Options) error {
 		// The news page types text continuously, so it lays out every
 		// frame; tile diffing keeps that to the characters that appeared.
 		as := attract.State()
-		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != theme || c.page != page || c.feeds != fv.Version || c.attract != as {
+		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != th || c.page != page || c.feeds != fv.Version || c.attract != as {
 			snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
 			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now, Attract: as}
 			reader.Apply(&v)
-			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), theme, page, fv.Version, as}
+			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), th, page, fv.Version, as}
 		}
 		a := Anim{}
 		if o.FPS > 0 {
 			a.T = now.Sub(start).Seconds()
+		}
+		if th.BG != bg {
+			// A cycle fade step: the margins around the frame follow.
+			bg = th.BG
+			fb.ClearMargins(rgb(bg), cols*Tile*o.Scale, rows*Tile*o.Scale, padX, padY)
 		}
 		if spans := r.Draw(c.canvas, th, a); len(spans) > 0 {
 			fb.Blit(r.Frame(), spans, o.Scale, padX, padY)
@@ -172,7 +182,8 @@ func Run(o Options) error {
 		if intro != nil {
 			intro.Reset()
 		}
-		fb.Clear(rgb(ui.Themes[theme].BG))
+		bg = sel.Theme(time.Now(), o.FPS > 0).BG
+		fb.Clear(rgb(bg))
 		draw()
 	}
 	// step moves attract mode's cycle on, on every tick.
@@ -220,7 +231,7 @@ func Run(o Options) error {
 			case k.Rune == 'q' || k.Rune == 'Q' || k.Code == KeyInterrupt:
 				return nil
 			case k.Rune == 't' || k.Rune == 'T':
-				theme = (theme + 1) % len(ui.Themes)
+				sel = sel.Next(time.Now())
 				redrawAll()
 			case k.Rune == 'd' || k.Rune == 'D':
 				setPage(ui.Dash)
@@ -266,7 +277,7 @@ func Run(o Options) error {
 type canvasCache struct {
 	canvas  *canvas.Canvas
 	sec     int64
-	theme   int
+	theme   *ui.Theme
 	page    ui.Page
 	feeds   uint64
 	attract ui.AttractState

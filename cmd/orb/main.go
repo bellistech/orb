@@ -43,12 +43,9 @@ func main() {
 		return
 	}
 
-	themeNames := make([]string, len(ui.Themes))
-	for i, t := range ui.Themes {
-		themeNames[i] = t.Name
-	}
+	themeNames := ui.ThemeNames()
 	cfgPath := flag.String("config", config.DefaultPath(), "config file")
-	theme := flag.String("theme", ui.DefaultTheme, "color theme: "+strings.Join(themeNames, ", "))
+	theme := flag.String("theme", ui.DefaultTheme, "color theme: "+strings.Join(themeNames, ", ")+" ("+ui.Cycle+" loops through the rest)")
 	page := flag.String("page", "dash", "starting page: dash, news, net or links")
 	interval := flag.Duration("interval", time.Second, "sample interval")
 	once := flag.String("once", "", "print one frame of WxH cells (pixels with -gfx, as PNG) and exit")
@@ -132,8 +129,8 @@ func main() {
 		*weatherURL = cfg.WeatherURL
 	}
 
-	th := ui.ThemeByName(*theme)
-	if th == nil {
+	sel, ok := ui.SelectTheme(*theme, time.Now())
+	if !ok {
 		fail("unknown theme %q (have: %s)", *theme, strings.Join(themeNames, ", "))
 	}
 	startPage := ui.Dash
@@ -223,18 +220,12 @@ func main() {
 
 	if *once != "" {
 		onPage(startPage)
-		runOnce(*once, *gfxMode, *scale, ui.View{Page: startPage, Snap: onceSnap(sampler, *demo, *interval), Feeds: onceFeeds(feedView, startPage), Now: time.Now()}, th)
+		runOnce(*once, *gfxMode, *scale, ui.View{Page: startPage, Snap: onceSnap(sampler, *demo, *interval), Feeds: onceFeeds(feedView, startPage), Now: time.Now()}, sel.Theme(time.Now(), false))
 		return
 	}
 
 	if *gfxMode {
-		ti := 0
-		for i, t := range ui.Themes {
-			if t == th {
-				ti = i
-			}
-		}
-		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: ti,
+		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: sel.Name(),
 			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, OnPage: onPage,
 			Intro: *intro, Version: version, Attract: *attract,
 			AfterOpen: func(tookVT bool) error {
@@ -250,7 +241,7 @@ func main() {
 		return
 	}
 
-	if _, err := tea.NewProgram(tui.New(*interval, th.Name, startPage, src, feedView, onPage, *attract)).Run(); err != nil {
+	if _, err := tea.NewProgram(tui.New(*interval, sel.Name(), startPage, src, feedView, onPage, *attract)).Run(); err != nil {
 		fail("%v", err)
 	}
 }

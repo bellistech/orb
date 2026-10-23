@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"orb/internal/canvas"
 	"orb/internal/feeds"
 	"orb/internal/sys"
 	"orb/internal/ui"
@@ -54,6 +55,39 @@ func BenchmarkTweenFrame(b *testing.B) {
 		snap := sys.Lerp(a, z, float64(i%10)/10)
 		c := ui.Render(107, 45, ui.View{Snap: snap}, th, true)
 		fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: float64(i) / 15}), 4, 8, 0)
+	}
+}
+
+// The theme cycle's cross-fade at 15 fps, frame by frame as the run loop
+// draws it: a new palette lays out and redraws the whole frame, a frame
+// within a step costs what an idle one does. "dwell" is the same frames
+// between fades.
+func BenchmarkFadeFrame(b *testing.B) {
+	for _, phase := range []struct {
+		name string
+		at   time.Duration
+	}{{"fade", ui.CycleDwell}, {"dwell", 0}} {
+		b.Run(phase.name, func(b *testing.B) {
+			pf, _ := newPixelFormat(xrgb())
+			fb := &FB{format: pf, W: 3440, H: 1440, stride: 13824}
+			fb.mem = make([]byte, fb.stride*fb.H)
+			cols, rows, px, py, _ := Grid(fb.W, fb.H, 3)
+			t0 := time.Unix(1_800_000_000, 0)
+			sel, _ := ui.SelectTheme(ui.Cycle, t0)
+			snap := sys.Demo(t0)
+			r := NewRenderer()
+			var c *canvas.Canvas
+			var shown *ui.Theme
+			frames := int(ui.CycleFade * 15 / time.Second)
+			for i := range b.N {
+				now := t0.Add(phase.at + time.Duration(i%frames)*time.Second/15)
+				th := sel.Theme(now, true)
+				if th != shown {
+					c, shown = ui.Render(cols, rows, ui.View{Snap: snap, Now: t0}, th, true), th
+				}
+				fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: 100 + float64(i)/15}), 3, px, py)
+			}
+		})
 	}
 }
 

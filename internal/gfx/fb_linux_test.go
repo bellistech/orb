@@ -100,6 +100,38 @@ func TestBlitScalesAndSkipsUnchangedRows(t *testing.T) {
 	}
 }
 
+func TestClearMarginsLeavesThePicture(t *testing.T) {
+	pf, _ := newPixelFormat(xrgb())
+	fb := &FB{format: pf, W: 8, H: 6, stride: 8*4 + 8}
+	fb.mem = make([]byte, fb.stride*fb.H)
+	px := func(x, y int) uint32 {
+		o := y*fb.stride + x*4
+		return uint32(fb.mem[o]) | uint32(fb.mem[o+1])<<8 | uint32(fb.mem[o+2])<<16
+	}
+	fb.ClearMargins(0x123456, 4, 2, 1, 2)
+	for y := range fb.H {
+		for x := range fb.W {
+			want := uint32(0x123456)
+			if x >= 1 && x < 5 && y >= 2 && y < 4 {
+				want = 0
+			}
+			if got := px(x, y); got != want {
+				t.Errorf("pixel %d,%d = %#06x, want %#06x", x, y, got, want)
+			}
+		}
+	}
+	// A picture bigger than the screen clips; nothing is written past it.
+	fb.ClearMargins(0xffffff, 99, 99, 7, -3)
+	if px(6, 0) != 0xffffff || px(7, 0) != 0x123456 {
+		t.Error("oversized picture margins wrong")
+	}
+	for i := fb.W * 4; i < fb.stride; i++ {
+		if fb.mem[i] != 0 {
+			t.Fatal("wrote into the stride padding")
+		}
+	}
+}
+
 // Reads the real device's geometry when present; never writes to it.
 func TestOpenRealFramebuffer(t *testing.T) {
 	if _, err := os.Stat("/dev/fb0"); err != nil {

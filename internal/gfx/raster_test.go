@@ -157,6 +157,31 @@ func TestIncrementalMatchesFullRender(t *testing.T) {
 	}
 }
 
+// The same through a theme-cycle fade, where the palette changes under
+// one renderer every few frames.
+func TestIncrementalMatchesFullRenderThroughAFade(t *testing.T) {
+	t0 := time.Unix(1_800_000_000, 0)
+	sel, _ := ui.SelectTheme(ui.Cycle, t0)
+	inc := NewRenderer()
+	for i := range 30 {
+		d := ui.CycleDwell - time.Second + time.Duration(i)*ui.CycleFade/24
+		now := t0.Add(d)
+		th := sel.Theme(now, true)
+		c := ui.Render(107, 45, ui.View{Snap: sys.Demo(now), Now: now}, th, true)
+		a := Anim{T: 100 + d.Seconds()}
+		inc.Draw(c, th, a)
+		full := NewRenderer()
+		full.Draw(c, th, a)
+		got, want := inc.Frame().Pix, full.Frame().Pix
+		for p := range want {
+			if got[p] != want[p] {
+				t.Fatalf("frame %d (%s): pixel %d,%d = %#06x, full render %#06x",
+					i, th.Name, p%inc.Frame().W, p/inc.Frame().W, got[p], want[p])
+			}
+		}
+	}
+}
+
 func TestOrbStaysInItsRect(t *testing.T) {
 	th := ui.Themes[0]
 	c := canvas.New(20, 10, th.BG)
