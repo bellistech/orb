@@ -50,7 +50,7 @@ func FuzzClean(f *testing.F) {
 	})
 }
 
-const weatherJSON = `{"location":"Springfield","updated":"2026-10-12T16:21:52.212186+00:00",
+const weatherJSON = `{"location":"Austin, Texas","updated":"2026-10-12T16:21:52.212186+00:00",
  "now":{"temp":80,"summary":"Mostly cloudy","icon":"☁️","high":91,"low":72,"precip_chance":10},
  "hourly":[{"time":"11 AM","temp":79,"icon":"☁️"},{"time":"12 PM","temp":83,"icon":"⛈️"}],
  "daily":[{"day":"Monday","high":89,"low":72,"summary":"Scattered thunderstorms","icon":"🌤️"}]}`
@@ -60,7 +60,7 @@ func TestParseWeather(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if w.Location != "Springfield" || w.Now.Temp != 80 || w.Now.Kind != Cloudy || w.Now.Precip != 10 {
+	if w.Location != "Austin, Texas" || w.Now.Temp != 80 || w.Now.Kind != Cloudy || w.Now.Precip != 10 {
 		t.Fatalf("now = %+v", w.Now)
 	}
 	if len(w.Hourly) != 2 || w.Hourly[1].Kind != Storm || w.Hourly[0].Label != "11 AM" {
