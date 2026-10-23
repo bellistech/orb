@@ -183,11 +183,29 @@ the last 3 samples) is under 15%, sits and wags under 45%, trots laps
 under 85%, sprints above; pants on memory >= 90%, swap >= 50% or a sensor
 at 85% of its range (unless sprinting); barks with a speech bubble
 ("Woof! / disk 97%") on a mount >= 95% or a sensor past its critical
-point. Collar and outline take the header accent. Every pose is a pure
-function of mood, pen and the animation clock.
+point. Every pose is a pure function of mood, pen and the animation clock.
+
+It is drawn after a real dog, a small white terrier: a coat ticked grey
+and black, black ears folding over at the tips, black patches over both
+eyes split by a white blaze, tan brows, cheeks and paws, a black nose, a
+dark brown collar. The coat is the same in every theme; only the outline
+is theme-tinted, lighter beside black fur so the ears stay apart from a
+dark header.
+
+In the sit band it plays ball for the last 8 s of every 24 on the
+animation clock (`ui.DogAct`): a play bow, a swipe that rolls its ball
+(orange, a blue stripe that turns as it rolls) away, a dash and a pounce,
+then it trots the ball home in its mouth, turns and drops it at its feet.
+Play is a variant of sit, not another level: it still means a moderate
+load, and it stays near home with the ball in sight, where trotting runs
+the whole pen. A napping dog stays asleep (idle must read as idle), and
+the running moods have their own gaits. The ball lies by the dog while it
+naps, sits or pants; it is put away while the dog runs laps (left at home
+across the pen it would cost a second blit run on every header row) and
+while it barks (the bubble is there).
 
 Overlays (`gfx/overlay.go`) are pixel effects that ignore the tile grid:
-the orb, the dog, and sparkles, four-pointed glints that bloom and fade on window
+the orb, the dog and its ball, and sparkles, four-pointed glints that bloom and fade on window
 bevels on staggered periods. Tiles under an overlay this frame or last are
 restored and redrawn before overlays are painted, so nothing leaves trails.
 `TestIncrementalMatchesFullRender` holds the renderer to that: after any

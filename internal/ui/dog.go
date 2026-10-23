@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"orb/internal/canvas"
@@ -20,6 +21,7 @@ const (
 	Sprint             // pegged: sprints
 	Pant               // memory pressure or a hot sensor (short of pegged)
 	Bark               // alert: a disk almost full, a sensor past critical
+	Play               // calm, between sits: a game of ball (DogAct; never from DogMood)
 )
 
 func (m Mood) String() string {
@@ -36,6 +38,8 @@ func (m Mood) String() string {
 		return "pant"
 	case Bark:
 		return "bark"
+	case Play:
+		return "play"
 	}
 	return "?"
 }
@@ -52,6 +56,39 @@ const (
 	dogHotPant   = 0.85 // tempFrac of the hottest sensor
 	dogDiskAlert = 0.95
 )
+
+// Ball play: a sitting dog plays ball for the last dogPlayLen seconds of
+// every dogPlayEvery on the animation clock. Only Sit plays: a napping dog
+// means idle and stays asleep, and the working moods have their own gaits.
+const (
+	dogPlayEvery = 24.0
+	dogPlayLen   = 8.0
+)
+
+// DogAct is what the dog in mood m does at animation time T (seconds), and
+// for Play how far into the bout it is. Sit turns into Play for a bout
+// every dogPlayEvery seconds; it still means a moderate load. Play itself
+// (for previews) loops the bout.
+func DogAct(m Mood, T float64) (Mood, float64) {
+	switch m {
+	case Sit:
+		if u := phase(T, dogPlayEvery) - (dogPlayEvery - dogPlayLen); u >= 0 {
+			return Play, u
+		}
+	case Play:
+		return Play, phase(T, dogPlayLen)
+	}
+	return m, 0
+}
+
+// phase is T mod p in [0, p).
+func phase(T, p float64) float64 {
+	u := math.Mod(T, p)
+	if u < 0 {
+		u += p
+	}
+	return u
+}
 
 // DogMood maps a snapshot to the dog's mood, and for Bark what it says
 // ("disk 97%", "cpu 96°"). Alerts come first, then a pegged CPU, then heat

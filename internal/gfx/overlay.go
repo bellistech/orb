@@ -33,15 +33,15 @@ func lerpRGB(a, b uint32, t float64) uint32 {
 	return ch(16) | ch(8) | ch(0)
 }
 
-// overlays lists this frame's effects: the orb emblem, the dog and edge
-// sparkles.
+// overlays lists this frame's effects: the orb emblem, the dog and its
+// ball, and edge sparkles.
 func (r *Renderer) overlays(c *canvas.Canvas, t *ui.Theme, a Anim) []overlay {
 	var out []overlay
 	for _, o := range c.Orbs {
 		out = append(out, r.orb(o, t, a))
 	}
 	for _, p := range c.Pets {
-		out = append(out, r.dog(p, t, a))
+		out = append(out, r.dog(p, t, a)...)
 	}
 	return append(out, sparkles(c, t, a)...)
 }

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -67,13 +68,45 @@ func TestDogMood(t *testing.T) {
 }
 
 func TestMoodString(t *testing.T) {
-	for m, want := range []string{"nap", "sit", "trot", "sprint", "pant", "bark"} {
+	for m, want := range []string{"nap", "sit", "trot", "sprint", "pant", "bark", "play"} {
 		if got := Mood(m).String(); got != want {
 			t.Errorf("Mood(%d) = %q, want %q", m, got, want)
 		}
 	}
 	if Mood(99).String() != "?" {
 		t.Error("unknown mood should print ?")
+	}
+}
+
+// A sitting dog plays ball for the last 8 s of every 24 on the animation
+// clock; no other mood plays, and Play itself loops the bout.
+func TestDogAct(t *testing.T) {
+	cases := []struct {
+		m    Mood
+		T    float64
+		want Mood
+		u    float64
+	}{
+		{Sit, 0, Sit, 0},
+		{Sit, 15.9, Sit, 0},
+		{Sit, 16, Play, 0},
+		{Sit, 20.5, Play, 4.5},
+		{Sit, 23.75, Play, 7.75},
+		{Sit, 24, Sit, 0},
+		{Sit, 1000, Play, 0}, // 1000 = 41*24 + 16
+		{Sit, -1, Play, 7},   // clocks before zero still wrap
+		{Play, 9, Play, 1},
+		{Nap, 17, Nap, 0},
+		{Trot, 17, Trot, 0},
+		{Sprint, 17, Sprint, 0},
+		{Pant, 17, Pant, 0},
+		{Bark, 17, Bark, 0},
+	}
+	for _, c := range cases {
+		m, u := DogAct(c.m, c.T)
+		if m != c.want || math.Abs(u-c.u) > 1e-9 {
+			t.Errorf("DogAct(%v, %v) = %v %.3f, want %v %.3f", c.m, c.T, m, u, c.want, c.u)
+		}
 	}
 }
 
