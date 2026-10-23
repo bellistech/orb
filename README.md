@@ -2,9 +2,9 @@
 
 View-only host health dashboard for the terminal and the bare Linux console. Built for a big monitor across the desk; works the same over SSH. One static binary, no agents.
 
-![orb in graphics mode: the dashboard in all six themes, then news & weather, network and links pages](docs/media/orb.webp)
+![orb in graphics mode: boot intro, the dashboard with its dog through every theme, then news & weather, network and links pages](docs/media/orb.webp)
 
-<sub>`orb -gfx -demo` (synthetic data), 143x60 tiles: the layout of a 3440x1440 monitor at `-scale 3`. Dashboard in phosphor, gizzard, lantern, chrono, arcane and crimson, then news & weather, network and links.</sub>
+<sub>`orb -gfx -demo` (synthetic data), 143x60 tiles: the layout of a 3440x1440 monitor at `-scale 3`. Boot intro at normal speed, then 2x: the dashboard while the dog naps, trots, sprints and barks at a full disk, a nonagon cross-fade and the other themes (sylvan among them), news & weather under a thunderstorm sky, network and links.</sub>
 
 ```bash
 orb                     # live dashboard in the terminal
@@ -49,6 +49,11 @@ stars and the moon in its phase at night, a glow at sunrise and sunset, a
 sun crossing by day, all tinted by the theme; with a weather feed it
 clouds over, rains, snows, fogs up or flashes with lightning. Sunrise and
 sunset are reckoned from the date alone (orb knows no location).
+
+A pixel dog lives in the header and shows how the box feels: it naps
+when the CPU is idle, sits and wags, trots, sprints when the CPU is
+pegged, pants under memory pressure or heat, and barks with a speech
+bubble ("Woof! disk 97%") at a full disk or a sensor past critical.
 
 ```bash
 orb -gfx -scale 3       # pixel size, 1..8 (3, the default = 143x60 tiles on 3440x1440)
