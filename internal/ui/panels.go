@@ -69,7 +69,9 @@ func drawHeader(r canvas.Region, v *View, t *Theme) {
 	}
 	rightW := max(len(date), chipsW)
 	id := in.Sub(x, 0, in.W-x, in.H)
+	penEnd := in.W
 	if id.W-rightW-2 >= 50 {
+		penEnd = in.W - len(date) - 2
 		id = in.Sub(x, 0, id.W-rightW-2, in.H)
 		in.Bold(in.W-len(date), 0, date, t.FG)
 		cx := in.W - chipsW + 2
@@ -86,8 +88,10 @@ func drawHeader(r canvas.Region, v *View, t *Theme) {
 	for i, ch := range hn {
 		id.SetBold(i, 0, ch, Mix(t.Host, t.CPU, float64(i)/float64(max(len(hn), 1))))
 	}
-	id.Text(len([]rune(hn))+2, 0, fmt.Sprintf("%s · %s", s.Host.OS, s.Host.Kernel), t.Dim)
-	id.Text(0, 1, fmt.Sprintf("%s · %d threads · up %s", s.Host.CPUModel, len(s.Cores), Uptime(s.Host.Uptime)), t.Dim)
+	end0 := id.Text(len([]rune(hn))+2, 0, fmt.Sprintf("%s · %s", s.Host.OS, s.Host.Kernel), t.Dim)
+	end1 := id.Text(0, 1, fmt.Sprintf("%s · %d threads · up %s", s.Host.CPUModel, len(s.Cores), Uptime(s.Host.Uptime)), t.Dim)
+	// The dog lives in what the two identity lines leave free.
+	dogPen(r, 2+x+min(max(end0, end1), id.W)+2, 2+penEnd, s, t)
 	lx := id.Text(0, 2, "load ", t.Dim)
 	n := float64(max(len(s.Cores), 1))
 	for i, l := range s.Host.Load {

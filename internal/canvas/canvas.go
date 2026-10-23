@@ -59,6 +59,18 @@ type Canvas struct {
 	// Orbs marks where the emblem goes; a pixel backend draws it there,
 	// over whatever the cells hold.
 	Orbs []Window
+
+	// Pets marks where the companion lives and what it is doing; a pixel
+	// backend draws it there, over empty cells.
+	Pets []Pet
+}
+
+// Pet is the companion's pen in absolute cell coordinates, its mood (a
+// ui.Mood) and what it says, if anything.
+type Pet struct {
+	Window
+	Mood uint8
+	Say  string
 }
 
 // Window is a framed panel in absolute cell coordinates.
@@ -109,6 +121,13 @@ func (r Region) AddWindow(accent Color) {
 func (r Region) AddOrb(accent Color) {
 	if r.c != nil && !r.Empty() {
 		r.c.Orbs = append(r.c.Orbs, Window{X: r.X, Y: r.Y, W: r.W, H: r.H, Accent: accent})
+	}
+}
+
+// AddPet records r as the companion's pen.
+func (r Region) AddPet(accent Color, mood uint8, say string) {
+	if r.c != nil && !r.Empty() {
+		r.c.Pets = append(r.c.Pets, Pet{Window{X: r.X, Y: r.Y, W: r.W, H: r.H, Accent: accent}, mood, say})
 	}
 }
 

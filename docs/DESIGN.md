@@ -176,8 +176,18 @@ hot end of the theme ramp, with a glowing core, darker limb, highlight, rim
 and a pulsing halo blended over the frame behind it. Terminals get a 6x6
 block-art version.
 
+The dog (prototype): a 20x16 pixel companion in the header's free cells
+between the identity lines and the date (`canvas.Pets`, graphics only).
+Its mood is a status signal (`ui.DogMood`): naps when the CPU (mean of
+the last 3 samples) is under 15%, sits and wags under 45%, trots laps
+under 85%, sprints above; pants on memory >= 90%, swap >= 50% or a sensor
+at 85% of its range (unless sprinting); barks with a speech bubble
+("Woof! / disk 97%") on a mount >= 95% or a sensor past its critical
+point. Collar and outline take the header accent. Every pose is a pure
+function of mood, pen and the animation clock.
+
 Overlays (`gfx/overlay.go`) are pixel effects that ignore the tile grid:
-the orb, and sparkles, four-pointed glints that bloom and fade on window
+the orb, the dog, and sparkles, four-pointed glints that bloom and fade on window
 bevels on staggered periods. Tiles under an overlay this frame or last are
 restored and redrawn before overlays are painted, so nothing leaves trails.
 `TestIncrementalMatchesFullRender` holds the renderer to that: after any

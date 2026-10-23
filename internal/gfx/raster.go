@@ -71,6 +71,7 @@ type Renderer struct {
 	dirty       []Span // per row, X0 >= X1 means clean
 	prevOver    []rect // overlay rects drawn last frame
 	orbPal      *orbPalette
+	dogPal      *dogPalCache
 
 	// Per tile: the window whose top border it is on (-1 none), whether
 	// it must be redrawn (under an overlay, sky repainted), whether it
