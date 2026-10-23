@@ -33,6 +33,14 @@ func main() {
 		}
 		return
 	}
+	// The LLDP listener (ADR-0003), likewise re-executed by a root orb.
+	if len(os.Args) == 2 && os.Args[1] == priv.LLDPHelperFlag {
+		if err := priv.RunLLDPHelper(os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "orb lldp helper:", err)
+			os.Exit(3)
+		}
+		return
+	}
 
 	themeNames := make([]string, len(ui.Themes))
 	for i, t := range ui.Themes {
@@ -168,6 +176,12 @@ func main() {
 			sampler.Owners, sampler.AllOwners = h.Owners, true
 			defer h.Close()
 		}
+		if t, stop, err := priv.StartLLDPHelper(); err != nil {
+			fmt.Fprintf(os.Stderr, "orb: warning: %v; the links page will hear no LLDP neighbors\n", err)
+		} else {
+			sampler.LLDP = t.Neighbors
+			defer stop()
+		}
 		target := priv.TargetFromEnv(os.Getenv)
 		drop = func(tookVT bool) error {
 			var keep []priv.Cap
@@ -227,6 +241,12 @@ func onceSnap(s *sys.Sampler, demo bool, interval time.Duration) *sys.Snapshot {
 	}
 	if s.WantLinks.Load() {
 		s.Sample() // link rates need a sample with links on before this one
+		// LLDP neighbors announce every 30 s: give one frame a chance.
+		for deadline := time.Now().Add(35 * time.Second); s.LLDP != nil && time.Now().Before(deadline); time.Sleep(250 * time.Millisecond) {
+			if ns, on := s.LLDP(); !on || len(ns) > 0 {
+				break
+			}
+		}
 	}
 	time.Sleep(interval)
 	return s.Sample()

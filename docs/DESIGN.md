@@ -108,7 +108,8 @@ routing protocol bright).
 Interfaces come from `/sys/class/net`; neighbors, routes and the bridge
 forwarding database from rtnetlink dumps (no privilege needed; parsed by
 hand with every length checked, fuzzed). Read every sample, only while the
-page is up; per-port history starts when it opens.
+page is up; per-port history starts when it opens. LLDP comes from orb's
+own listener (ADR-0003), so only when started as root.
 
 ## Privileges
 
@@ -116,7 +117,9 @@ Run as root, orb splits itself (ADR-0002): a helper with only
 CAP_DAC_READ_SEARCH and CAP_SYS_PTRACE, as nobody, with no network, maps
 socket inodes to processes; the main process drops to the invoking user
 with no capabilities (CAP_SYS_TTY_CONFIG only if it took a console) before
-fetching any feed.
+fetching any feed. A second helper (ADR-0003) opens the LLDP packet socket
+as root, then drops to nobody with no capabilities at all, decodes LLDP
+frames and sends validated neighbors over a pipe.
 
 ## Rendering
 

@@ -24,7 +24,9 @@ test-priv:
 	@d=$$(mktemp -d) && CGO_ENABLED=0 go test -c -o $$d/priv.test ./internal/priv && \
 	s=0; for t in TestDropHelperCaps TestDropMainNoCaps TestDropMainTTYConfig; do \
 		ORB_PRIV_TEST=1 unshare --map-auto --map-root-user $$d/priv.test -test.v -test.run "^$$t$$" || s=1; \
-	done; CGO_ENABLED=0 go build -o $$d/orb ./cmd/orb && \
+	done; \
+	ORB_PRIV_TEST=1 unshare --map-auto --map-root-user --net $$d/priv.test -test.v -test.run '^TestLLDPHelperDrop$$' || s=1; \
+	CGO_ENABLED=0 go build -o $$d/orb ./cmd/orb && \
 	unshare --map-auto --map-root-user scripts/test-privsep.sh $$d/orb || s=1; rm -rf $$d; exit $$s
 
 lint:
