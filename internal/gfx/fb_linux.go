@@ -15,6 +15,13 @@ import (
 const (
 	fbiogetVScreenInfo = 0x4600
 	fbiogetFScreenInfo = 0x4602
+	fbioblank          = 0x4611
+)
+
+// FBIOBLANK levels (<linux/fb.h>).
+const (
+	fbBlankUnblank   = 0
+	fbBlankPowerdown = 4
 )
 
 // fbBitfield mirrors struct fb_bitfield.
@@ -52,8 +59,9 @@ type FB struct {
 	f      *os.File
 	mem    []byte
 	format pixelFormat
-	W, H   int // visible pixels
-	stride int // bytes per row
+	W, H   int  // visible pixels
+	stride int  // bytes per row
+	dark   bool // Blank(true) is in force
 }
 
 // OpenFB opens and maps a framebuffer device such as /dev/fb0.
@@ -155,10 +163,29 @@ func (p pixelFormat) pack(rgb uint32) uint32 {
 	return r>>(8-p.rLen)<<p.rOff | g>>(8-p.gLen)<<p.gOff | b>>(8-p.bLen)<<p.bOff
 }
 
-// Close unmaps and closes the device.
+// Blank powers the monitor down (DPMS off) or back up. The pixels stay
+// mapped either way. A driver without blanking returns an error and the
+// screen stays lit.
+func (fb *FB) Blank(on bool) error {
+	level := fbBlankUnblank
+	if on {
+		level = fbBlankPowerdown
+	}
+	if err := unix.IoctlSetInt(int(fb.f.Fd()), fbioblank, level); err != nil {
+		return fmt.Errorf("FBIOBLANK: %w", err)
+	}
+	fb.dark = on
+	return nil
+}
+
+// Close unmaps and closes the device. A blanked monitor is woken first:
+// orb must not leave the console dark behind it.
 func (fb *FB) Close() error {
 	if fb == nil || fb.f == nil {
 		return nil
+	}
+	if fb.dark {
+		fb.Blank(false)
 	}
 	err := unix.Munmap(fb.mem)
 	if cerr := fb.f.Close(); err == nil {

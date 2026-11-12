@@ -25,6 +25,8 @@ type Options struct {
 	Intro     bool
 	Version   string
 	Attract   bool
+	Blank     time.Duration
+	Activity  <-chan struct{}
 	AfterOpen func(tookVT bool) error
 }
 

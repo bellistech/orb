@@ -30,6 +30,12 @@ type Options struct {
 	Intro    bool              // play the boot intro first (needs FPS > 0)
 	Version  string            // for the intro's title card
 	Attract  bool              // start with attract mode armed
+	// Blank powers the monitor down after this long without input, until
+	// the next input; 0 never (see CheckBlank). Keys on the console always
+	// count; Activity, if not nil, signals input the console does not
+	// carry (the mouse).
+	Blank    time.Duration
+	Activity <-chan struct{}
 	// AfterOpen runs once the framebuffer and console are open, before
 	// the first frame: where a root process drops privileges. tookVT says
 	// whether restoring the console will need CAP_SYS_TTY_CONFIG.
@@ -43,7 +49,7 @@ const tween = 600 * time.Millisecond
 // else (sudo, SSH) it takes a free VT and switches back when done. The console is restored on every exit path,
 // including panics in this goroutine.
 func Run(o Options) error {
-	if o.Source == nil || o.Interval <= 0 || o.FPS < 0 || o.FPS > 60 {
+	if o.Source == nil || o.Interval <= 0 || o.FPS < 0 || o.FPS > 60 || !CheckBlank(o.Blank) {
 		return errors.New("gfx: invalid options")
 	}
 	sel, ok := ui.SelectTheme(o.Theme, time.Now())
@@ -118,6 +124,7 @@ func Run(o Options) error {
 	bg := sel.Theme(start, o.FPS > 0).BG
 	fb.Clear(rgb(bg))
 	attract := ui.NewAttract(o.Attract)
+	blank := NewBlanker(o.Blank, start)
 	// The intro plays while the first samples come in; it needs animation.
 	var intro *Intro
 	if o.Intro && o.FPS > 0 {
@@ -137,7 +144,7 @@ func Run(o Options) error {
 	// clock's second, a theme switch), and the renderer then redraws only
 	// the tiles and stars that differ, so idle ticks cost almost nothing.
 	draw := func() {
-		if !active {
+		if !active || blank.Off() {
 			return
 		}
 		now := time.Now()
@@ -186,11 +193,29 @@ func Run(o Options) error {
 		fb.Clear(rgb(bg))
 		draw()
 	}
-	// step moves attract mode's cycle on, on every tick.
+	// step moves attract mode's cycle on, on every tick, and puts the
+	// monitor to sleep when the idle time has run out. Nothing cycles
+	// behind a dark screen.
 	step := func() {
-		if p, ok := attract.Step(time.Now(), page); ok {
+		now := time.Now()
+		if !active || blank.Off() {
+			return
+		}
+		if blank.Step(now) {
+			// A driver that cannot blank gets a black screen instead.
+			if err := fb.Blank(true); err != nil {
+				fb.Clear(0)
+			}
+			return
+		}
+		if p, ok := attract.Step(now, page); ok {
 			setPage(p)
 		}
+	}
+	// wake lights the monitor again; the pixels are redrawn from scratch.
+	wake := func() {
+		fb.Blank(false)
+		redrawAll()
 	}
 
 	sample := time.NewTicker(o.Interval)
@@ -210,12 +235,23 @@ func Run(o Options) error {
 				step()
 				draw()
 			}
+		case <-o.Activity:
+			if blank.Input(time.Now()) && active {
+				wake()
+			}
 		case <-tick:
 			step()
 			draw()
 		case k, ok := <-keys:
 			if !ok {
 				return errors.New("keyboard closed")
+			}
+			// A key that wakes the monitor does only that.
+			if now := time.Now(); blank.Input(now) {
+				wake()
+				continue
+			} else if blank.Waking(now) {
+				continue
 			}
 			// Any key skips the intro and stops attract mode's cycle,
 			// then does its usual job.
@@ -257,6 +293,10 @@ func Run(o Options) error {
 		case s := <-sigs:
 			switch s {
 			case sigRelease:
+				// The next VT must not inherit a dark monitor.
+				if blank.Input(time.Now()) {
+					fb.Blank(false)
+				}
 				active = false
 				if err := con.Release(); err != nil {
 					return fmt.Errorf("release VT: %w", err)
@@ -266,6 +306,7 @@ func Run(o Options) error {
 					return fmt.Errorf("acquire VT: %w", err)
 				}
 				active = true
+				blank.Input(time.Now()) // idle counts from here
 				redrawAll()
 			default:
 				return nil

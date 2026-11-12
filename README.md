@@ -15,6 +15,7 @@ orb -theme nonagon      # all of them in an endless loop, cross-fading every min
 orb -interval 2s        # sample every 2s
 orb -demo               # synthetic data
 orb -attract            # cycle the pages after 30s without a key (or press i)
+orb -gfx -blank 5m      # monitor off after 5 minutes without keyboard or mouse input
 orb -once 215x45        # print one frame and exit
 orb -gfx -once 3440x1440 > frame.png
 ```
@@ -59,7 +60,16 @@ bubble ("Woof! disk 97%") at a full disk or a sensor past critical.
 orb -gfx -scale 3       # pixel size, 1..8 (3, the default = 143x60 tiles on 3440x1440)
 orb -gfx -fps 0         # no animation, redraw once per sample
 orb -gfx -intro=false   # straight to the dashboard
+orb -gfx -blank 5m      # monitor off after 5 minutes idle, 10s..24h (default 0: never)
 ```
+
+With `-blank`, the monitor powers down (DPMS) once that long passes
+without a key press or mouse input, and the next key press, mouse move or
+click wakes it. The key that wakes it does nothing else. orb keeps
+sampling in the dark, so the graphs have no gap. The mouse is seen only
+when orb starts as root or its user is in the `input` group, and only
+devices plugged in at start; the keyboard always wakes it. orb never
+reads what is typed or clicked, only that something was.
 
 On start it plays a short boot intro, about 4 seconds, while the first
 samples come in: a studio splash, then a title card with the orb, ORB,
@@ -133,6 +143,7 @@ scale = 3                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation
 intro = true                # graphics mode boot intro
 attract = false             # true: start with attract mode armed
+blank = 0                   # graphics mode: monitor off after this long idle, e.g. 5m; 0 never
 news_url = https://example.com/news.json
 weather_url = https://example.com/weather.json
 ```

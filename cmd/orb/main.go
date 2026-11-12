@@ -16,6 +16,7 @@ import (
 	"orb/internal/config"
 	"orb/internal/feeds"
 	"orb/internal/gfx"
+	"orb/internal/input"
 	"orb/internal/priv"
 	"orb/internal/sys"
 	"orb/internal/tui"
@@ -30,6 +31,14 @@ func main() {
 	if len(os.Args) == 2 && os.Args[1] == priv.HelperFlag {
 		if err := priv.RunHelper(os.Stdin, os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, "orb socket helper:", err)
+			os.Exit(3)
+		}
+		return
+	}
+	// The input helper (ADR-0005), likewise re-executed by a root orb.
+	if len(os.Args) == 2 && os.Args[1] == priv.InputHelperFlag {
+		if err := priv.RunInputHelper(os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "orb input helper:", err)
 			os.Exit(3)
 		}
 		return
@@ -55,6 +64,7 @@ func main() {
 	device := flag.String("fb", "/dev/fb0", "graphics mode framebuffer device")
 	intro := flag.Bool("intro", true, "graphics mode: play the boot intro on start (any key skips)")
 	attract := flag.Bool("attract", false, "start with attract mode armed: cycle the pages after 30s without a key")
+	blank := flag.Duration("blank", 0, "graphics mode: turn the monitor off after this long without keyboard or mouse input, e.g. 5m (0 never)")
 	newsURL := flag.String("news-url", "", "news JSON URL (better kept in the config file)")
 	weatherURL := flag.String("weather-url", "", "weather JSON URL")
 	demo := flag.Bool("demo", false, "show synthetic data instead of this host's")
@@ -122,6 +132,9 @@ func main() {
 	if !set["attract"] && cfg.Attract {
 		*attract = true
 	}
+	if !set["blank"] && cfg.Blank != 0 {
+		*blank = cfg.Blank
+	}
 	if !set["news-url"] {
 		*newsURL = cfg.NewsURL
 	}
@@ -150,6 +163,9 @@ func main() {
 	}
 	if *fps < 0 || *fps > 60 {
 		fail("-fps must be 0..60")
+	}
+	if !gfx.CheckBlank(*blank) {
+		fail("-blank must be 0 (never) or %v..%v", gfx.BlankMin, gfx.BlankMax)
 	}
 	for _, u := range []string{*newsURL, *weatherURL} {
 		if u != "" {
@@ -210,6 +226,27 @@ func main() {
 			return nil
 		}
 	}
+	// The blanker wakes on the mouse too, which the console does not
+	// carry. As root a helper watches the input devices, so this process
+	// never holds a descriptor that could read keystrokes (ADR-0005); not
+	// root, there is no privilege to separate and it reads what its user
+	// may. Without either, only the keyboard wakes the monitor.
+	var activity <-chan struct{}
+	if *gfxMode && *once == "" && *blank > 0 {
+		if os.Geteuid() == 0 {
+			ch, stop, err := priv.StartInputHelper()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "orb: warning: %v; only the keyboard will wake the monitor\n", err)
+			} else {
+				activity = ch
+				defer stop()
+			}
+		} else {
+			ch, stop := input.Start(input.Dir)
+			activity = ch
+			defer stop()
+		}
+	}
 	// Terminal and one-shot modes have nothing privileged to open: drop now.
 	if !*gfxMode || *once != "" {
 		if err := drop(false); err != nil {
@@ -227,7 +264,7 @@ func main() {
 	if *gfxMode {
 		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: sel.Name(),
 			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, OnPage: onPage,
-			Intro: *intro, Version: version, Attract: *attract,
+			Intro: *intro, Version: version, Attract: *attract, Blank: *blank, Activity: activity,
 			AfterOpen: func(tookVT bool) error {
 				if err := drop(tookVT); err != nil {
 					return err

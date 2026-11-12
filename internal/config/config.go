@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"orb/internal/feeds"
+	"orb/internal/gfx"
 )
 
 // Config is every setting the file may hold. Zero values mean unset.
@@ -28,8 +29,9 @@ type Config struct {
 	Page       string
 	NewsURL    string
 	WeatherURL string
-	NoIntro    bool // intro = false: no boot sequence in graphics mode
-	Attract    bool // attract = true: armed from the start
+	NoIntro    bool          // intro = false: no boot sequence in graphics mode
+	Attract    bool          // attract = true: armed from the start
+	Blank      time.Duration // blank = 5m: monitor off after that long idle (graphics mode); 0 never
 }
 
 const maxSize = 64 << 10
@@ -153,6 +155,11 @@ func (c *Config) set(key, val string) error {
 		c.NoIntro = err == nil && !on
 	case "attract":
 		c.Attract, err = boolean(val)
+	case "blank":
+		c.Blank, err = time.ParseDuration(val)
+		if err == nil && !gfx.CheckBlank(c.Blank) {
+			err = fmt.Errorf("blank must be 0 (never) or %v..%v", gfx.BlankMin, gfx.BlankMax)
+		}
 	case "news_url":
 		c.NewsURL, err = val, feeds.CheckURL(val)
 	case "weather_url":

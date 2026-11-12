@@ -116,6 +116,26 @@ hand with every length checked, fuzzed). Read every sample, only while the
 page is up; per-port history starts when it opens. LLDP comes from orb's
 own listener (ADR-0003), so only when started as root.
 
+## Monitor blanking
+
+`-blank 5m` (graphics mode; off by default, since the point of the
+dashboard is to be glanced at): after that long without keyboard or mouse
+input the monitor is powered down with FBIOBLANK (DPMS off), and the next
+input wakes it. The kernel's own console blanker does not run while a VT
+is in graphics mode, so orb does it. `gfx.Blanker` is a pure state machine
+like `ui.Attract`, fed input times and ticks. Keys come from the console
+as always; the mouse (and the keyboard a second time) from the event
+devices under `/dev/input`. A root orb never opens those itself: a
+helper does, drops to nobody and sends one `.` per burst of activity,
+so the process that parses feeds holds nothing that reads keystrokes
+(ADR-0005). The key that wakes the screen
+is swallowed, along with anything within 0.5 s of the wake-up, because
+the same press arrives on both paths. Dark, orb still samples but does
+not draw or cycle pages; waking redraws everything. A VT switch away
+wakes the monitor first, and the idle time starts over on return. A
+driver that cannot blank gets a black screen instead. On every exit the
+monitor is woken.
+
 ## Attract mode
 
 `i` arms it, off by default (Stevie: so the news page stays put while
@@ -295,6 +315,7 @@ row via upper half blocks (fg = top core, bg = bottom core).
   log tail with severity color.
 - Autostart graphics mode on the desk VT (systemd unit or login hook).
 - DRM/KMS backend and hosting other binaries fullscreen: [ADR-0001](adr/0001-native-kiosk-renderer.md).
+- Cheat codes, the Fetch minigame and rare dog acts: [ADR-0004](adr/0004-easter-eggs.md) (proposed).
 
 Ideas, undecided:
 
