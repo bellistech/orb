@@ -133,7 +133,11 @@ is swallowed, along with anything within 0.5 s of the wake-up, because
 the same press arrives on both paths. Dark, orb still samples but does
 not draw or cycle pages; waking redraws everything. A VT switch away
 wakes the monitor first, and the idle time starts over on return. A
-driver that cannot blank gets a black screen instead. On every exit the
+driver that cannot blank gets a black screen instead. A blanked orb also
+checks on every tick that the monitor is still down (`FB.Lit`, from sysfs)
+and powers it down again if not: a monitor entering deep sleep drops its
+link, and the kernel answers that hotplug by lighting the output with no
+input event to say so (ADR-0005). On every exit the
 monitor is woken.
 
 ## Attract mode

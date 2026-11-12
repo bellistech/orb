@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
@@ -62,6 +64,9 @@ type FB struct {
 	W, H   int  // visible pixels
 	stride int  // bytes per row
 	dark   bool // Blank(true) is in force
+	// conns is where sysfs lists this framebuffer's display connectors,
+	// "" when the device has none there (not a DRM framebuffer).
+	conns string
 }
 
 // OpenFB opens and maps a framebuffer device such as /dev/fb0.
@@ -74,6 +79,10 @@ func OpenFB(path string) (*FB, error) {
 	if err != nil {
 		f.Close()
 		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	var st unix.Stat_t
+	if unix.Fstat(int(f.Fd()), &st) == nil {
+		fb.conns = fmt.Sprintf("/sys/class/graphics/fb%d/device/drm", unix.Minor(st.Rdev))
 	}
 	return fb, nil
 }
@@ -176,6 +185,37 @@ func (fb *FB) Blank(on bool) error {
 	}
 	fb.dark = on
 	return nil
+}
+
+// Lit reports whether a monitor of this framebuffer is powered up, as the
+// kernel sees it. It is how a blanked orb notices that something else
+// lit the screen again: a monitor going into deep sleep drops its link,
+// the driver takes that for a hotplug and switches the output back on,
+// and no input event says so. False when the kernel will not say.
+func (fb *FB) Lit() bool { return fb.conns != "" && litIn(fb.conns) }
+
+// litIn looks under a framebuffer's drm directory (card*/card*-*/) for a
+// connector that is connected and whose dpms state is On.
+func litIn(dir string) bool {
+	conns, _ := filepath.Glob(filepath.Join(dir, "card*", "card*-*"))
+	for _, c := range conns {
+		if sysWord(filepath.Join(c, "status")) == "connected" && sysWord(filepath.Join(c, "dpms")) == "On" {
+			return true
+		}
+	}
+	return false
+}
+
+// sysWord is a small sysfs attribute, trimmed; "" when it cannot be read.
+func sysWord(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	b := make([]byte, 32)
+	n, _ := f.Read(b)
+	return strings.TrimSpace(string(b[:n]))
 }
 
 // Close unmaps and closes the device. A blanked monitor is woken first:

@@ -4,6 +4,7 @@ package gfx
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -146,4 +147,47 @@ func TestOpenRealFramebuffer(t *testing.T) {
 		t.Fatalf("bad geometry %dx%d stride %d", fb.W, fb.H, fb.stride)
 	}
 	t.Logf("fb0: %dx%d, stride %d, %d bytes/px", fb.W, fb.H, fb.stride, fb.format.bytes)
+}
+
+// A framebuffer's monitor counts as lit only when a connector is both
+// connected and in dpms On; unreadable or absent sysfs means "not lit",
+// so a blanked orb never re-blanks on a guess.
+func TestLitIn(t *testing.T) {
+	dir := t.TempDir()
+	conn := func(name, status, dpms string) {
+		t.Helper()
+		p := filepath.Join(dir, "card1", name)
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for f, v := range map[string]string{"status": status, "dpms": dpms} {
+			if err := os.WriteFile(filepath.Join(p, f), []byte(v+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if litIn(dir) {
+		t.Fatal("lit with no connector")
+	}
+	// What west looks like blanked: one monitor, powered down; the unused
+	// connectors read Off, and the writeback connector reads On while
+	// never being connected.
+	conn("card1-DP-3", "connected", "Off")
+	conn("card1-DP-1", "disconnected", "Off")
+	conn("card1-Writeback-1", "unknown", "On")
+	if litIn(dir) {
+		t.Fatal("lit while the only monitor is powered down")
+	}
+	conn("card1-DP-3", "connected", "On")
+	if !litIn(dir) {
+		t.Fatal("not lit with a connected monitor in dpms On")
+	}
+	conn("card1-DP-3", "connected", "Off")
+	conn("card1-HDMI-A-1", "connected", "On")
+	if !litIn(dir) {
+		t.Fatal("a second monitor that is lit was missed")
+	}
+	if litIn(filepath.Join(dir, "missing")) || (&FB{}).Lit() {
+		t.Fatal("lit without a sysfs directory")
+	}
 }

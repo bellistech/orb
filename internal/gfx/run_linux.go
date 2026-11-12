@@ -212,6 +212,19 @@ func Run(o Options) error {
 			setPage(p)
 		}
 	}
+	// reblank puts a monitor back to sleep that the kernel lit while orb
+	// had it blanked. Nobody touched anything (that would have come
+	// through as input): a monitor going into deep sleep drops its link
+	// some seconds after power-down, the driver takes that for a hotplug
+	// and switches the output on again, and without this the screen would
+	// stay lit, showing the last frame, for as long as nobody is there.
+	// Called on every tick and sample: caught within a frame, the monitor
+	// has not finished waking.
+	reblank := func() {
+		if active && blank.Off() && fb.Lit() {
+			fb.Blank(true)
+		}
+	}
 	// wake lights the monitor again; the pixels are redrawn from scratch.
 	wake := func() {
 		fb.Blank(false)
@@ -231,6 +244,7 @@ func Run(o Options) error {
 		select {
 		case <-sample.C:
 			prev, cur, sampled = cur, o.Source(), time.Now()
+			reblank()
 			if o.FPS == 0 {
 				step()
 				draw()
@@ -240,6 +254,7 @@ func Run(o Options) error {
 				wake()
 			}
 		case <-tick:
+			reblank()
 			step()
 			draw()
 		case k, ok := <-keys:

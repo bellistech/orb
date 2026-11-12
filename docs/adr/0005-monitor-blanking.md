@@ -71,6 +71,29 @@ quitting; a second `q` quits with status 0. Live on west (amdgpudrmfb),
 effect on a real panel is still to be seen by eye. `Blanker`, the
 watcher, the device filter and the tick pump have unit tests.
 
+## Found on a real monitor, the same day
+
+The first test ran with no monitor attached. With one (a DisplayPort
+ultrawide), `-blank 1m` powered the panel down and 18 seconds later it was
+lit again and stayed lit, showing the last frame: Stevie's test ran twelve
+minutes without staying dark. No input device had spoken. A monitor going
+into deep sleep drops its link; amdgpu takes that for a hotplug and the
+fbdev emulation switches the output back on. orb still held itself to be
+blanked, so it neither drew nor blanked again.
+
+- A blanked orb now asks the kernel on every tick whether a monitor of its
+  framebuffer is lit (`FB.Lit`: sysfs, the connectors under the
+  framebuffer's DRM device, `status` connected and `dpms` On) and, if so,
+  powers it down again. Nobody having touched anything is known: input
+  would have woken orb through the other path.
+- Measured on west: off after the idle time, relit by the kernel once 18 s
+  later, down again within a frame (not visible at five samples a second),
+  then dark for as long as watched (148 s in one run). The monitor drops
+  its link once, not repeatedly.
+- `make test-blank` did not catch this and still would not without a
+  monitor: its blanks are shorter than 18 s. Checking a real panel means
+  watching `/sys/class/drm/card*-*/dpms` for a few minutes.
+
 ## Consequences
 
 The process that reads keyboards can do nothing but write dots to a pipe,
