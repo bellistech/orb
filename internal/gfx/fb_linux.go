@@ -61,9 +61,10 @@ type FB struct {
 	f      *os.File
 	mem    []byte
 	format pixelFormat
-	W, H   int  // visible pixels
-	stride int  // bytes per row
-	dark   bool // Blank(true) is in force
+	W, H   int      // the picture's pixels: the visible area as Rotate turns it
+	stride int      // bytes per framebuffer row
+	rot    Rotation // set by Rotate
+	dark   bool     // Blank(true) is in force
 	// conns is where sysfs lists this framebuffer's display connectors,
 	// "" when the device has none there (not a DRM framebuffer).
 	conns string
@@ -235,12 +236,47 @@ func (fb *FB) Close() error {
 	return err
 }
 
+// Rotate turns everything drawn from now on by r on the framebuffer. W and
+// H become the picture's size: swapped for a quarter turn either way.
+func (fb *FB) Rotate(r Rotation) {
+	r &= 3
+	if (r^fb.rot)&1 == 1 {
+		fb.W, fb.H = fb.H, fb.W
+	}
+	fb.rot = r
+}
+
+// phys is the framebuffer's own visible size, whatever the rotation.
+func (fb *FB) phys() (int, int) {
+	if fb.rot&1 == 1 {
+		return fb.H, fb.W
+	}
+	return fb.W, fb.H
+}
+
+// fill paints a rectangle of the picture with one packed pixel, clipped to
+// the picture.
+func (fb *FB) fill(x, y, w, h int, px uint32) {
+	x0, y0 := max(x, 0), max(y, 0)
+	x1, y1 := min(x+w, fb.W), min(y+h, fb.H)
+	if x0 >= x1 || y0 >= y1 {
+		return
+	}
+	pw, ph := fb.phys()
+	X, Y, W, H := fb.rot.physRect(x0, y0, x1-x0, y1-y0, pw, ph)
+	bpp := fb.format.bytes
+	for row := Y; row < Y+H; row++ {
+		putRow(fb.mem[row*fb.stride+X*bpp:], bpp, px, W)
+	}
+}
+
 // Clear fills the whole screen with one color.
 func (fb *FB) Clear(rgb uint32) {
 	px := fb.format.pack(rgb)
-	row := make([]byte, fb.W*fb.format.bytes)
-	putRow(row, fb.format.bytes, px, fb.W)
-	for y := range fb.H {
+	pw, ph := fb.phys()
+	row := make([]byte, pw*fb.format.bytes)
+	putRow(row, fb.format.bytes, px, pw)
+	for y := range ph {
 		copy(fb.mem[y*fb.stride:], row)
 	}
 }
@@ -252,6 +288,13 @@ func (fb *FB) ClearMargins(rgb uint32, w, h, padX, padY int) {
 	bpp := fb.format.bytes
 	padX, padY = max(0, min(padX, fb.W)), max(0, min(padY, fb.H))
 	x1, y1 := min(padX+max(w, 0), fb.W), min(padY+max(h, 0), fb.H)
+	if fb.rot != 0 {
+		fb.fill(0, 0, fb.W, padY, px)           // above
+		fb.fill(0, y1, fb.W, fb.H-y1, px)       // below
+		fb.fill(0, padY, padX, y1-padY, px)     // left
+		fb.fill(x1, padY, fb.W-x1, y1-padY, px) // right
+		return
+	}
 	row := make([]byte, fb.W*bpp)
 	putRow(row, bpp, px, fb.W)
 	for y := range fb.H {
@@ -279,6 +322,9 @@ func (fb *FB) Blit(f *Frame, spans []Span, scale, padX, padY int) int {
 			spans[y] = Span{Y: y, X0: 0, X1: f.W}
 		}
 	}
+	if fb.rot != 0 {
+		return fb.blitTurned(f, spans, scale, padX, padY)
+	}
 	bpp := fb.format.bytes
 	row := make([]byte, f.W*scale*bpp)
 	written := 0
@@ -296,6 +342,24 @@ func (fb *FB) Blit(f *Frame, spans []Span, scale, padX, padY int) int {
 		for s := range scale {
 			off := (padY+sp.Y*scale+s)*fb.stride + (padX+sp.X0*scale)*bpp
 			copy(fb.mem[off:off+n], row[:n])
+		}
+		written++
+	}
+	return written
+}
+
+// blitTurned is Blit on a rotated framebuffer: each picture pixel becomes
+// a scale x scale block wherever the rotation puts it. The caller checked
+// that the frame fits.
+func (fb *FB) blitTurned(f *Frame, spans []Span, scale, padX, padY int) int {
+	written := 0
+	for _, sp := range spans {
+		if sp.Y < 0 || sp.Y >= f.H || sp.X0 < 0 || sp.X1 > f.W || sp.X0 >= sp.X1 {
+			continue
+		}
+		y := padY + sp.Y*scale
+		for x, v := range f.Pix[sp.Y*f.W+sp.X0 : sp.Y*f.W+sp.X1] {
+			fb.fill(padX+(sp.X0+x)*scale, y, scale, scale, fb.format.pack(v))
 		}
 		written++
 	}

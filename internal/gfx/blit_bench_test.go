@@ -42,6 +42,37 @@ func BenchmarkAnimatedFrameBlit(b *testing.B) {
 	}
 }
 
+// The same on a 1920x1080 monitor mounted on its side (rotated a quarter
+// turn): every picture pixel is placed one by one. The first frame (full)
+// and the steady state.
+func BenchmarkTurnedFrameBlit(b *testing.B) {
+	pf, _ := newPixelFormat(xrgb())
+	fb := &FB{format: pf, W: 1920, H: 1080, stride: 1920 * 4}
+	fb.mem = make([]byte, fb.stride*fb.H)
+	fb.Rotate(3)
+	cols, rows, px, py, err := Grid(fb.W, fb.H, 3)
+	if err != nil {
+		b.Fatal(err)
+	}
+	snap := sys.Demo(time.Unix(1_800_000_000, 0))
+	th := ui.Themes[0]
+	c := ui.Render(cols, rows, ui.View{Snap: snap}, th, true)
+	r := NewRenderer()
+	r.Draw(c, th, Anim{T: 99})
+	b.Run("full", func(b *testing.B) {
+		for range b.N {
+			fb.Blit(r.Frame(), nil, 3, px, py)
+		}
+	})
+	b.Run("steady", func(b *testing.B) {
+		spans := 0
+		for i := range b.N {
+			spans += fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: 100 + float64(i)/15}), 3, px, py)
+		}
+		b.ReportMetric(float64(spans)/float64(b.N), "spans/frame")
+	})
+}
+
 // Steady-state animated frames over a weather sky at scale 3: the
 // dashboard idle while rain, snow or a storm moves behind it.
 func BenchmarkSkyFrameBlit(b *testing.B) {

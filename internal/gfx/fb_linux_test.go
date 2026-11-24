@@ -191,3 +191,131 @@ func TestLitIn(t *testing.T) {
 		t.Fatal("lit without a sysfs directory")
 	}
 }
+
+// turnedFB is a 9x7 framebuffer (padded stride) turned by r: the picture is
+// 7x9 for a quarter turn.
+func turnedFB(r Rotation) (*FB, func(x, y int) uint32) {
+	pf, _ := newPixelFormat(xrgb())
+	fb := &FB{format: pf, W: 9, H: 7, stride: 9*4 + 8}
+	fb.mem = make([]byte, fb.stride*7)
+	fb.Rotate(r)
+	return fb, func(x, y int) uint32 { // framebuffer pixel
+		o := y*fb.stride + x*4
+		return uint32(fb.mem[o]) | uint32(fb.mem[o+1])<<8 | uint32(fb.mem[o+2])<<16
+	}
+}
+
+// onScreen is where picture pixel (x, y) of a w x h picture lands on the
+// framebuffer under r, written out per case independently of physRect.
+func onScreen(r Rotation, x, y, w, h int) (int, int) {
+	switch r {
+	case 1: // clockwise: the picture's top edge runs down the right side
+		return h - 1 - y, x
+	case 2:
+		return w - 1 - x, h - 1 - y
+	case 3: // counter-clockwise: the top edge runs up the left side
+		return y, w - 1 - x
+	}
+	return x, y
+}
+
+func TestRotatedBlitPutsEveryPixelWhereTheTurnSays(t *testing.T) {
+	for r := Rotation(0); r < 4; r++ {
+		fb, px := turnedFB(r)
+		if want := [2]int{9, 7}; r&1 == 1 && [2]int{fb.W, fb.H} != [2]int{7, 9} || r&1 == 0 && [2]int{fb.W, fb.H} != want {
+			t.Fatalf("rot %d: picture %dx%d", r, fb.W, fb.H)
+		}
+		// A 2x3 frame at scale 2, offset (1, 1): every pixel distinct.
+		f := NewFrame(2, 3)
+		for i := range f.Pix {
+			f.Pix[i] = 0x100000 * uint32(i+1)
+		}
+		if n := fb.Blit(f, nil, 2, 1, 1); n != 3 {
+			t.Fatalf("rot %d: wrote %d spans, want 3", r, n)
+		}
+		want := map[[2]int]uint32{}
+		for y := range fb.H {
+			for x := range fb.W {
+				var v uint32
+				if fx, fy := (x-1)/2, (y-1)/2; x >= 1 && y >= 1 && fx < 2 && fy < 3 {
+					v = f.Pix[fy*2+fx]
+				}
+				X, Y := onScreen(r, x, y, fb.W, fb.H)
+				want[[2]int{X, Y}] = v
+			}
+		}
+		if len(want) != 63 {
+			t.Fatalf("rot %d: picture covers %d framebuffer pixels, want 63", r, len(want))
+		}
+		for k, v := range want {
+			if got := px(k[0], k[1]); got != v {
+				t.Errorf("rot %d: framebuffer %d,%d = %#06x, want %#06x", r, k[0], k[1], got, v)
+			}
+		}
+		// Out-of-bounds placement is refused in picture terms.
+		if n := fb.Blit(f, nil, 2, fb.W-3, 0); n != 0 {
+			t.Errorf("rot %d: oversized blit wrote %d", r, n)
+		}
+		for y := range 7 {
+			for i := 9 * 4; i < fb.stride; i++ {
+				if fb.mem[y*fb.stride+i] != 0 {
+					t.Fatalf("rot %d: wrote into the stride padding", r)
+				}
+			}
+		}
+	}
+}
+
+func TestRotatedClearMarginsLeavesThePicture(t *testing.T) {
+	for r := Rotation(1); r < 4; r++ {
+		fb, px := turnedFB(r)
+		fb.ClearMargins(0x123456, 2, 3, 1, 2)
+		for y := range fb.H {
+			for x := range fb.W {
+				want := uint32(0x123456)
+				if x >= 1 && x < 3 && y >= 2 && y < 5 {
+					want = 0
+				}
+				X, Y := onScreen(r, x, y, fb.W, fb.H)
+				if got := px(X, Y); got != want {
+					t.Errorf("rot %d: picture %d,%d = %#06x, want %#06x", r, x, y, got, want)
+				}
+			}
+		}
+		fb.Clear(0xabcdef)
+		for y := range 7 {
+			for x := range 9 {
+				if px(x, y) != 0xabcdef {
+					t.Fatalf("rot %d: Clear missed %d,%d", r, x, y)
+				}
+			}
+		}
+	}
+}
+
+func TestParseRotation(t *testing.T) {
+	for s, want := range map[string]Rotation{"0": 0, "90": 1, "180": 2, "270": 3} {
+		if r, auto, err := ParseRotation(s); err != nil || auto || r != want {
+			t.Errorf("%q = %d, %v, %v", s, r, auto, err)
+		}
+	}
+	if _, auto, err := ParseRotation("auto"); err != nil || !auto {
+		t.Error("auto rejected")
+	}
+	for _, s := range []string{"", "45", "-90", "360", "cw", "3"} {
+		if _, _, err := ParseRotation(s); err == nil {
+			t.Errorf("%q accepted", s)
+		}
+	}
+	dir := t.TempDir()
+	for s, want := range map[string]Rotation{"3\n": 3, "1": 1, "2\n": 2, "0\n": 0, "7\n": 0, "junk": 0, "": 0} {
+		p := filepath.Join(dir, "rotate")
+		os.WriteFile(p, []byte(s), 0o600)
+		if got := consoleRotation(p); got != want {
+			t.Errorf("fbcon %q = %d, want %d", s, got, want)
+		}
+	}
+	if consoleRotation(filepath.Join(dir, "missing")) != 0 {
+		t.Error("missing file not 0")
+	}
+}

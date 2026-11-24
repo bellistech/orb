@@ -32,6 +32,7 @@ type Config struct {
 	NoIntro    bool          // intro = false: no boot sequence in graphics mode
 	Attract    bool          // attract = true: armed from the start
 	Blank      time.Duration // blank = 5m: monitor off after that long idle (graphics mode); 0 never
+	Rotate     string        // rotate = auto, 0, 90, 180 or 270 (graphics mode)
 }
 
 const maxSize = 64 << 10
@@ -160,6 +161,9 @@ func (c *Config) set(key, val string) error {
 		if err == nil && !gfx.CheckBlank(c.Blank) {
 			err = fmt.Errorf("blank must be 0 (never) or %v..%v", gfx.BlankMin, gfx.BlankMax)
 		}
+	case "rotate":
+		_, _, err = gfx.ParseRotation(val)
+		c.Rotate = val
 	case "news_url":
 		c.NewsURL, err = val, feeds.CheckURL(val)
 	case "weather_url":
