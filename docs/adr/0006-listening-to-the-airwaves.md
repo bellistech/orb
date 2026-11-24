@@ -44,7 +44,8 @@ third helper does the scanning:
   nl80211 checks that capability on every scan request, on both the socket
   and the caller, so it cannot be dropped after opening a socket the way the
   LLDP helper drops (ADR-0003).
-- Every interval it asks each station interface that is up for a scan. The
+- Every interval it asks each station interface for a scan; the kernel
+  refuses one that is down, and the page says so. The
   request names no SSID, which makes it passive: the radio sends no probe
   requests, it only listens on each channel for beacons. It never brings a
   down interface up and never touches an access-point or monitor interface.
@@ -72,8 +73,15 @@ choice is Stevie's, asked 2026-11-24.
 - **Live on west, not root:** the reader sees `wlp17s0` and the network it
   has joined, on channel 157.
 - **Live on east, as root with `-radio-scan 30s`:** the helper's passive scan
-  on `wlp7s0` heard two 2.4 GHz networks. The interface's transmit counter
-  stayed at 0 packets.
+  on `wlp7s0` heard two 2.4 GHz networks. The helper ran as nobody with
+  `CapPrm`, `CapEff` and `CapBnd` all 0x1000 (`CAP_NET_ADMIN`), no ambient
+  capability and no_new_privs, and ended with orb.
+- **Not measured: that nothing was transmitted.** The interface's transmit
+  counter stayed at 0, but it does not count management frames such as probe
+  requests, and this kernel exposes no transmitted-frame counter. That the
+  scan is silent rests on the request naming no SSID, which nl80211 defines
+  as passive, and on the driver honoring it.
+- **Not covered:** `make test-priv` has no case for this helper's drop yet.
 
 ## Consequences
 
