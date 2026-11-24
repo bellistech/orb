@@ -4,6 +4,8 @@ import (
 	"math"
 	"net/netip"
 	"time"
+
+	"orb/internal/radio"
 )
 
 // Demo returns a synthetic snapshot of a busy 12-thread box with full
@@ -110,6 +112,7 @@ func Demo(now time.Time) *Snapshot {
 		sock("tcp6", "[2001:db8::20]:443", "[2001:db8::99]:61000", "ESTAB", 2088, "haproxy"),
 	}
 	s.Links = demoLinks(wave)
+	s.Radio = demoRadio(now, wave)
 	names := []string{"llama-server", "go", "rustc", "postgres", "prometheus", "haproxy", "dockerd", "wotan", "sshd", "systemd-journal"}
 	for i, n := range names {
 		s.Procs = append(s.Procs, Proc{PID: 1200 + i*331, Name: n, CPU: 3.4 / float64(i+1) * (0.6 + 0.4*s.CPU), RSS: uint64(9-i) * gib / 3})
@@ -183,5 +186,38 @@ func demoLinks(wave func(i, phase, period, lo, hi float64) float64) *Links {
 			{Iface: "enp16s0", Chassis: "02:00:00:00:00:03", Port: "enp1s0", PortDesc: "p2p to west", Name: "east", Desc: "Ubuntu 25.10 Linux 6.17.0-41-generic x86_64", Caps: []string{"bridge", "router", "station"}, Mgmt: []string{"192.168.210.1", "fd12:3456:789a::2"}, TTL: 120, Age: 12},
 		},
 		LLDPOn: true,
+	}
+}
+
+// demoRadio is a made-up street: invented names, and every address has the
+// locally administered bit set (02:...), so none is a real device.
+func demoRadio(now time.Time, wave func(i, phase, period, lo, hi float64) float64) *Radio {
+	sig := func(i, base float64) float64 { return math.Round(wave(float64(History), i, 23, base-4, base+4)) }
+	ap := func(n byte, ssid string, mhz int, base float64, sec string, ago time.Duration) radio.AP {
+		return radio.AP{BSSID: [6]byte{0x02, 0x42, 0x0a, 0x1b, 0x00, n}, SSID: ssid, Hidden: ssid == "", FreqMHz: mhz,
+			Signal: sig(float64(n), base), Security: sec, Seen: now.Add(-ago), Iface: "wlp17s0"}
+	}
+	aps := []radio.AP{
+		ap(1, "Nonagon Infinity", 5785, -38, "WPA2/3", 0),
+		ap(2, "Nonagon Infinity", 2437, -44, "WPA2/3", 0),
+		ap(3, "Lizard Wizard 5G", 5180, -63, "WPA3", 2*time.Second),
+		ap(4, "Gumboot Soup", 2412, -71, "WPA2", 3*time.Second),
+		ap(5, "Flying Microtonal", 2462, -77, "WPA2", 8*time.Second),
+		ap(6, "", 5745, -80, "WPA2", 12*time.Second),
+		ap(7, "Rattlesnake Cafe", 2437, -82, "open", 20*time.Second),
+		ap(8, "Polygondwanaland", 2462, -84, "WPA2", 41*time.Second),
+		ap(9, "Murder of the Universe", 5500, -86, "WPA2-EAP", 2*time.Minute),
+		ap(10, "Fishing for Fishies", 6115, -88, "WPA3", 4*time.Minute),
+		ap(11, "Quarters", 2412, -89, "WEP", 7*time.Minute),
+	}
+	aps[0].Joined = true
+	radio.Sort(aps)
+	return &Radio{
+		Ifaces: []RadioIface{{
+			Iface: radio.Iface{Name: "wlp17s0", Index: 3, Phy: 0, Type: "station", MAC: [6]byte{0x02, 0x42, 0x0a, 0x1b, 0xff, 0x01}, FreqMHz: 5785},
+			Up:    true, Scan: ScanInfo{At: now.Add(-12 * time.Second)},
+		}},
+		APs:  aps,
+		Scan: ScanState{On: true, Every: time.Minute},
 	}
 }

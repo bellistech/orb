@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"orb/internal/radio"
 )
 
 // History is how many samples each series keeps.
@@ -53,6 +55,7 @@ type Snapshot struct {
 	AllOwners bool
 
 	Links *Links // only while the links page asks for it
+	Radio *Radio // only while the airwaves page asks for it
 }
 
 // Sampler takes successive readings and turns counters into rates. It is not
@@ -94,6 +97,16 @@ type Sampler struct {
 	LLDP     func() ([]LLDPNeighbor, bool)
 	linkPrev map[string]linkCounters
 	linkHist map[string]*Ring
+
+	// WantRadio turns the Wi-Fi reads on (airwaves page). Safe to set from
+	// any goroutine.
+	WantRadio atomic.Bool
+	// RadioScan, when set, reports the passive scan helper's state. Set
+	// before the first Sample.
+	RadioScan  func() ScanState
+	radioTable *radio.Table
+	radio      *Radio
+	radioAt    time.Time
 }
 
 // socketEvery is how often sockets are re-read while wanted: walking every
@@ -235,6 +248,12 @@ func (s *Sampler) Sample() *Snapshot {
 		snap.Links = s.readLinkView(dt)
 	} else {
 		s.linkPrev, s.linkHist = nil, nil
+	}
+
+	if s.WantRadio.Load() {
+		snap.Radio = s.readRadio(now)
+	} else {
+		s.radio = nil // the table keeps what was heard for the next visit
 	}
 	return snap
 }

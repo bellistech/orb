@@ -147,6 +147,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.setPage(ui.Net)
 		case "l":
 			return m, m.setPage(ui.Links)
+		case "a":
+			return m, m.setPage(ui.Air)
 		case "space", " ":
 			m.reader.Toggle(time.Now())
 		case "i":

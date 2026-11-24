@@ -17,6 +17,7 @@ import (
 
 	"orb/internal/feeds"
 	"orb/internal/gfx"
+	"orb/internal/priv"
 )
 
 // Config is every setting the file may hold. Zero values mean unset.
@@ -33,6 +34,7 @@ type Config struct {
 	Attract    bool          // attract = true: armed from the start
 	Blank      time.Duration // blank = 5m: monitor off after that long idle (graphics mode); 0 never
 	Rotate     string        // rotate = auto, 0, 90, 180 or 270 (graphics mode)
+	RadioScan  time.Duration // radio_scan = 60s: passive Wi-Fi scans as root (airwaves page); 0 off
 }
 
 const maxSize = 64 << 10
@@ -146,8 +148,8 @@ func (c *Config) set(key, val string) error {
 			err = errors.New("interval must be 100ms..1h")
 		}
 	case "page":
-		if val != "dash" && val != "news" && val != "net" && val != "links" {
-			return errors.New("page must be dash, news, net or links")
+		if val != "dash" && val != "news" && val != "net" && val != "links" && val != "air" {
+			return errors.New("page must be dash, news, net, links or air")
 		}
 		c.Page = val
 	case "intro":
@@ -160,6 +162,11 @@ func (c *Config) set(key, val string) error {
 		c.Blank, err = time.ParseDuration(val)
 		if err == nil && !gfx.CheckBlank(c.Blank) {
 			err = fmt.Errorf("blank must be 0 (never) or %v..%v", gfx.BlankMin, gfx.BlankMax)
+		}
+	case "radio_scan":
+		c.RadioScan, err = time.ParseDuration(val)
+		if err == nil && !priv.CheckRadioScan(c.RadioScan) {
+			err = fmt.Errorf("radio_scan must be 0 (off) or %v..%v", priv.RadioScanMin, priv.RadioScanMax)
 		}
 	case "rotate":
 		_, _, err = gfx.ParseRotation(val)

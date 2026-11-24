@@ -297,6 +297,8 @@ func Run(o Options) error {
 				draw()
 			case k.Rune == 'l' || k.Rune == 'L':
 				setPage(ui.Links)
+			case k.Rune == 'a' || k.Rune == 'A':
+				setPage(ui.Air)
 				draw()
 			case k.Rune == ' ':
 				reader.Toggle(time.Now())
