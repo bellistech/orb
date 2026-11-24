@@ -39,11 +39,11 @@ func TestAttractCyclesAfterIdle(t *testing.T) {
 	if a.State() != AttractArmed {
 		t.Fatalf("state %v, want armed", a.State())
 	}
-	pages, at := run(a, t0, 3*time.Minute, Dash)
+	pages, at := run(a, t0, 4*time.Minute, Dash)
 	// 30 s idle on the dashboard, then on at once; news holds 45 s for a
-	// story, net, links and airwaves 15 s, the dashboard 20 s.
-	want := []Page{News, Net, Links, Air, Dash, News}
-	wantAt := []time.Duration{30, 75, 90, 105, 120, 140}
+	// story, net, links and airwaves 15 s, Henry 30 s, the dashboard 20 s.
+	want := []Page{News, Net, Links, Air, Henry, Dash, News}
+	wantAt := []time.Duration{30, 75, 90, 105, 120, 150, 170}
 	if len(pages) < len(want) {
 		t.Fatalf("pages %v at %v", pages, at)
 	}

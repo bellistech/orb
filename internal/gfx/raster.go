@@ -73,6 +73,7 @@ type Renderer struct {
 	prevOver    []rect // overlay rects drawn last frame
 	orbPal      *orbPalette
 	dogPal      *dogPalCache
+	cloudShapes map[[2]uint32]*cloudShape // Henry Mode's clouds, by seed and scale
 
 	// Per tile: the window whose top border it is on (-1 none), whether
 	// it must be redrawn (under an overlay, sky repainted), whether it
@@ -110,7 +111,11 @@ func (r *Renderer) Draw(c *canvas.Canvas, t *ui.Theme, a Anim) []Span {
 	if c == nil || t == nil {
 		return nil
 	}
-	if key := baseKey(c, t); r.frame == nil || r.frame.W != c.W*Tile || r.frame.H != c.H*Tile || key != r.key {
+	key := baseKey(c, t)
+	if len(c.Scenes) > 0 {
+		key += meadowKey(a.Sky) // the meadow darkens and warms with the light
+	}
+	if r.frame == nil || r.frame.W != c.W*Tile || r.frame.H != c.H*Tile || key != r.key {
 		r.rebuild(c, t, key, a.Sky)
 	}
 	for i := range r.dirty {
@@ -208,6 +213,9 @@ func baseKey(c *canvas.Canvas, t *ui.Theme) string {
 	for _, w := range c.Windows {
 		b = append(b, byte(w.X), byte(w.X>>8), byte(w.Y), byte(w.W), byte(w.W>>8), byte(w.H), w.Accent.R, w.Accent.G, w.Accent.B)
 	}
+	for _, w := range c.Scenes {
+		b = append(b, 'S', byte(w.X), byte(w.X>>8), byte(w.Y), byte(w.W), byte(w.W>>8), byte(w.H))
+	}
 	return string(b)
 }
 
@@ -222,6 +230,9 @@ func (r *Renderer) rebuild(c *canvas.Canvas, t *ui.Theme, key string, s Sky) {
 	}
 	for _, win := range c.Windows {
 		drawWindow(r.base, win, t)
+	}
+	for _, sc := range c.Scenes {
+		paintMeadow(r.base, rect{sc.X * Tile, sc.Y * Tile, (sc.X + sc.W) * Tile, (sc.Y + sc.H) * Tile}, s)
 	}
 	r.px = make([]uint32, w*h)
 	r.open = r.open[:0]

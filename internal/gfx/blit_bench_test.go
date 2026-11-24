@@ -164,3 +164,28 @@ func BenchmarkNewsFrame(b *testing.B) {
 		fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: float64(i) / 15}), 4, 8, 0)
 	}
 }
+
+// Henry Mode on the desk monitor: the meadow is cached, the creatures are
+// overlays. Steady frames by day and by night.
+func BenchmarkHenryFrame(b *testing.B) {
+	now := time.Unix(1_800_000_000, 0)
+	for _, ht := range []ui.HenryTime{ui.HenryDay, ui.HenryNight} {
+		b.Run(ht.String(), func(b *testing.B) {
+			pf, _ := newPixelFormat(xrgb())
+			fb := &FB{format: pf, W: 3440, H: 1440, stride: 13824}
+			fb.mem = make([]byte, fb.stride*fb.H)
+			cols, rows, px, py, _ := Grid(fb.W, fb.H, 3)
+			th := ui.Themes[0]
+			c := ui.Render(cols, rows, ui.View{Page: ui.Henry, Snap: sys.Demo(now), Now: now, HenryTime: ht}, th, true)
+			sky := HenrySky(ht, now, feeds.View{})
+			r := NewRenderer()
+			fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: 99, Sky: sky}), 3, px, py)
+			spans := 0
+			b.ResetTimer()
+			for i := range b.N {
+				spans += fb.Blit(r.Frame(), r.Draw(c, th, Anim{T: 100 + float64(i)/15, Sky: sky}), 3, px, py)
+			}
+			b.ReportMetric(float64(spans)/float64(b.N), "spans/frame")
+		})
+	}
+}

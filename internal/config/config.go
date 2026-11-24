@@ -148,8 +148,8 @@ func (c *Config) set(key, val string) error {
 			err = errors.New("interval must be 100ms..1h")
 		}
 	case "page":
-		if val != "dash" && val != "news" && val != "net" && val != "links" && val != "air" {
-			return errors.New("page must be dash, news, net, links or air")
+		if val != "dash" && val != "news" && val != "net" && val != "links" && val != "air" && val != "henry" {
+			return errors.New("page must be dash, news, net, links, air or henry")
 		}
 		c.Page = val
 	case "intro":

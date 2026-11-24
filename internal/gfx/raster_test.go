@@ -177,6 +177,33 @@ func TestIncrementalMatchesFullRender(t *testing.T) {
 	}
 }
 
+// Henry Mode by day and by night, through a whole chase: the meadow in
+// the base layer and every creature as an overlay.
+func TestIncrementalMatchesFullRenderInHenryMode(t *testing.T) {
+	start := time.Unix(1_800_000_000, 0)
+	fv := feeds.Demo(start)
+	steps := []float64{0, 0.4, 1.5, 1.6, 2.2, 3.9, 5.5, 7.1, 9.0, 11.3, 12.0, 13.7, 15.2, 18.8, 19.9, 20.1, 23.4, 31.0}
+	for _, ht := range []ui.HenryTime{ui.HenryDay, ui.HenryNight, ui.HenryDusk} {
+		th := ui.Themes[0]
+		inc := NewRenderer()
+		for i, step := range steps {
+			now := start.Add(time.Duration(step * float64(time.Second)))
+			c := ui.Render(143, 60, ui.View{Page: ui.Henry, Snap: sys.Demo(now), Feeds: fv, Now: now, HenryTime: ht}, th, true)
+			a := Anim{T: 100 + step, Sky: HenrySky(ht, now, fv)}
+			inc.Draw(c, th, a)
+			full := NewRenderer()
+			full.Draw(c, th, a)
+			got, want := inc.Frame().Pix, full.Frame().Pix
+			for p := range want {
+				if got[p] != want[p] {
+					t.Fatalf("%v step %d (t=%.2f): pixel %d,%d = %#06x, full render %#06x",
+						ht, i, step, p%inc.Frame().W, p/inc.Frame().W, got[p], want[p])
+				}
+			}
+		}
+	}
+}
+
 // The same through a theme-cycle fade, where the palette changes under
 // one renderer every few frames.
 func TestIncrementalMatchesFullRenderThroughAFade(t *testing.T) {

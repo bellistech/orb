@@ -91,7 +91,9 @@ func drawHeader(r canvas.Region, v *View, t *Theme) {
 	end0 := id.Text(len([]rune(hn))+2, 0, fmt.Sprintf("%s · %s", s.Host.OS, s.Host.Kernel), t.Dim)
 	end1 := id.Text(0, 1, fmt.Sprintf("%s · %d threads · up %s", s.Host.CPUModel, len(s.Cores), Uptime(s.Host.Uptime)), t.Dim)
 	// The dog lives in what the two identity lines leave free.
-	dogPen(r, 2+x+min(max(end0, end1), id.W)+2, 2+penEnd, s, t)
+	if v.Page != Henry { // in Henry Mode he is out in the meadow
+		dogPen(r, 2+x+min(max(end0, end1), id.W)+2, 2+penEnd, s, t)
+	}
 	lx := id.Text(0, 2, "load ", t.Dim)
 	n := float64(max(len(s.Cores), 1))
 	for i, l := range s.Host.Load {
@@ -521,7 +523,7 @@ func drawTabs(r canvas.Region, p Page, a AttractState, t *Theme, x0 int) {
 	for i, tab := range []struct {
 		key, name string
 		page      Page
-	}{{"d", "DASH", Dash}, {"w", "NEWS", News}, {"n", "NET", Net}, {"l", "LINKS", Links}, {"a", "AIR", Air}} {
+	}{{"d", "DASH", Dash}, {"w", "NEWS", News}, {"n", "NET", Net}, {"l", "LINKS", Links}, {"a", "AIR", Air}, {"h", "HENRY", Henry}} {
 		if i > 0 {
 			x = r.Text(x, 0, "  ", edge)
 		}

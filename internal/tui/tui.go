@@ -43,6 +43,9 @@ type Model struct {
 	onPage   func(ui.Page)
 	snap     *sys.Snapshot
 	w, h     int
+
+	henryTime  ui.HenryTime
+	readerFull bool // the news reader on the whole screen (key 0)
 }
 
 // New returns a model sampling source every interval, starting on theme and
@@ -96,6 +99,9 @@ func (m *Model) setPage(p ui.Page) tea.Cmd {
 		return nil
 	}
 	m.page = p
+	if p != ui.News {
+		m.readerFull = false
+	}
 	if p == ui.News {
 		return frameTick()
 	}
@@ -133,9 +139,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "up", "left":
+		case "left", "right":
+			if m.page == ui.Henry {
+				d := 1
+				if msg.String() == "left" {
+					d = -1
+				}
+				m.henryTime = m.henryTime.Step(d)
+			} else if msg.String() == "left" {
+				m.reader.Skip(-1, time.Now())
+			} else {
+				m.reader.Skip(1, time.Now())
+			}
+		case "up":
 			m.reader.Skip(-1, time.Now())
-		case "down", "right":
+		case "down":
 			m.reader.Skip(1, time.Now())
 		case "t":
 			m.theme = m.theme.Next(time.Now())
@@ -149,6 +167,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.setPage(ui.Links)
 		case "a":
 			return m, m.setPage(ui.Air)
+		case "h":
+			return m, m.setPage(ui.Henry)
+		case "0":
+			if m.page == ui.News {
+				// Lay the new size out once, then land on the story that
+				// was showing (its pages change with the size).
+				now := time.Now()
+				mark := m.reader.Showing(now)
+				m.readerFull = !m.readerFull
+				v := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: now, ReaderFull: m.readerFull}
+				m.reader.Apply(&v)
+				ui.Render(m.w, m.h, v, m.theme.Theme(now, true), false)
+				m.reader.Land(mark, now)
+			}
 		case "space", " ":
 			m.reader.Toggle(time.Now())
 		case "i":
@@ -163,7 +195,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the current snapshot full-screen.
 func (m Model) View() tea.View {
 	t := m.theme.Theme(time.Now(), true)
-	view := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: time.Now(), Attract: m.attract.State()}
+	view := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: time.Now(), Attract: m.attract.State(), HenryTime: m.henryTime, ReaderFull: m.readerFull}
 	m.reader.Apply(&view)
 	v := tea.NewView(ui.Render(m.w, m.h, view, t, false).String())
 	v.AltScreen = true

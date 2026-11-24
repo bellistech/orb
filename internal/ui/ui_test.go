@@ -87,10 +87,12 @@ func TestRenderAnySize(t *testing.T) {
 		{Page: News, Snap: demo, Feeds: feeds.Demo(now), Now: now},
 		{Page: News, Snap: demo, Feeds: feeds.View{NewsOn: true, WeatherErr: "timeout", WeatherOn: true}},
 		{Page: News, Snap: empty},
+		{Page: News, Snap: demo, Feeds: feeds.Demo(now), Now: now, ReaderFull: true}, {Page: News, Snap: empty, ReaderFull: true},
 		{Page: Net, Snap: demo}, {Page: Net, Snap: empty},
 		{Page: Links, Snap: demo}, {Page: Links, Snap: empty},
 		{Page: Links, Snap: &sys.Snapshot{Time: demo.Time, Links: &sys.Links{}}}, // not root: no LLDP
 		{Page: Air, Snap: demo}, {Page: Air, Snap: empty},
+		{Page: Henry, Snap: demo}, {Page: Henry, Snap: demo, HenryTime: HenryNight}, {Page: Henry, Snap: empty},
 		{Page: Air, Snap: &sys.Snapshot{Time: demo.Time, Radio: &sys.Radio{}}},                          // no radio
 		{Page: Air, Snap: &sys.Snapshot{Time: demo.Time, Radio: &sys.Radio{Ifaces: demo.Radio.Ifaces}}}, // nothing heard
 		{Page: Air, Snap: &sys.Snapshot{Time: demo.Time, Radio: &sys.Radio{Err: "no Wi-Fi driver"}}},

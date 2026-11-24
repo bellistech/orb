@@ -63,6 +63,10 @@ type Canvas struct {
 	// Pets marks where the companion lives and what it is doing; a pixel
 	// backend draws it there, over empty cells.
 	Pets []Pet
+
+	// Scenes marks where a pixel backend paints a whole scene (Henry
+	// Mode's meadow) over empty cells.
+	Scenes []Window
 }
 
 // Pet is the companion's pen in absolute cell coordinates, its mood (a
@@ -128,6 +132,13 @@ func (r Region) AddOrb(accent Color) {
 func (r Region) AddPet(accent Color, mood uint8, say string) {
 	if r.c != nil && !r.Empty() {
 		r.c.Pets = append(r.c.Pets, Pet{Window{X: r.X, Y: r.Y, W: r.W, H: r.H, Accent: accent}, mood, say})
+	}
+}
+
+// AddScene records r as a place for a painted scene.
+func (r Region) AddScene(accent Color) {
+	if r.c != nil && !r.Empty() {
+		r.c.Scenes = append(r.c.Scenes, Window{X: r.X, Y: r.Y, W: r.W, H: r.H, Accent: accent})
 	}
 }
 

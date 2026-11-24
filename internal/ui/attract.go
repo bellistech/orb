@@ -14,6 +14,8 @@ func attractDwell(p Page) time.Duration {
 		return 45 * time.Second
 	case Dash:
 		return 20 * time.Second
+	case Henry:
+		return 30 * time.Second
 	}
 	return 15 * time.Second
 }
@@ -73,7 +75,7 @@ func (a *Attract) Step(now time.Time, p Page) (Page, bool) {
 		return p, false
 	}
 	a.shown = now
-	return (p + 1) % (Air + 1), true
+	return (p + 1) % (Henry + 1), true
 }
 
 // State reports the attract state for the header.

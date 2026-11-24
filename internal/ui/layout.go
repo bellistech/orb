@@ -11,13 +11,14 @@ import (
 // Page is which screen is showing.
 type Page int
 
-// Pages, in key order: d, w, n, l and a.
+// Pages, in key order: d, w, n, l, a and h.
 const (
 	Dash Page = iota
 	News
 	Net
 	Links
 	Air
+	Henry
 )
 
 // View is everything a frame shows.
@@ -33,6 +34,14 @@ type View struct {
 
 	// Attract shows attract mode's state in the header.
 	Attract AttractState
+
+	// HenryTime is the time of day Henry Mode shows: HenryClock follows
+	// the clock; the others pin it.
+	HenryTime HenryTime
+
+	// ReaderFull, on the news page, gives the whole screen to the story
+	// reader (key 0).
+	ReaderFull bool
 }
 
 type drawFn func(canvas.Region, *View, *Theme)
@@ -71,6 +80,8 @@ func grid(p Page, w int) []row {
 		return linksGrid(w)
 	case Air:
 		return airGrid(w)
+	case Henry:
+		return henryGrid(w)
 	}
 	var (
 		drawCPU, drawNet, drawDisk = dash(drawCPU), dash(drawNet), dash(drawDisk)
@@ -137,6 +148,10 @@ func Render(w, h int, v View, t *Theme, square bool) *canvas.Canvas {
 	}
 	if v.Now.IsZero() {
 		v.Now = v.Snap.Time
+	}
+	if v.Page == News && v.ReaderFull {
+		drawReader(full, &v, t)
+		return c
 	}
 	drawHeader(full.Sub(0, 0, w, headerH), &v, t)
 
