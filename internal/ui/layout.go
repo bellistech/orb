@@ -38,6 +38,10 @@ type View struct {
 	// HenryTime is the time of day Henry Mode shows: HenryClock follows
 	// the clock; the others pin it.
 	HenryTime HenryTime
+
+	// ReaderFull, on the news page, gives the whole screen to the story
+	// reader (key 0).
+	ReaderFull bool
 }
 
 type drawFn func(canvas.Region, *View, *Theme)
@@ -144,6 +148,10 @@ func Render(w, h int, v View, t *Theme, square bool) *canvas.Canvas {
 	}
 	if v.Now.IsZero() {
 		v.Now = v.Snap.Time
+	}
+	if v.Page == News && v.ReaderFull {
+		drawReader(full, &v, t)
+		return c
 	}
 	drawHeader(full.Sub(0, 0, w, headerH), &v, t)
 

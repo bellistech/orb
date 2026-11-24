@@ -189,6 +189,9 @@ func drawReader(r canvas.Region, v *View, t *Theme) {
 	if v.Reader.Paused {
 		sub = "PAUSED · space resumes · " + sub
 	}
+	if v.ReaderFull {
+		sub += " · 0 returns"
+	}
 	in := Frame(r, t, cat.Name, sub, accent)
 	if in.Empty() {
 		return
@@ -363,4 +366,67 @@ type ReaderState struct {
 	Set     bool
 	Paused  bool
 	Elapsed time.Duration
+}
+
+// StoryMark names a story independently of how the reader paginates it,
+// so the reader can stay on it when its size changes (key 0).
+type StoryMark struct {
+	cat   int
+	title string
+	pub   time.Time
+	ok    bool
+}
+
+func markOf(s story) StoryMark { return StoryMark{s.cat, s.item.Title, s.item.Published, true} }
+
+// elapsed is how far into the news the clock is at now.
+func (c *ReaderClock) elapsed(now time.Time) time.Duration {
+	if c.paused {
+		return c.pausedAt.Sub(c.newsAt) - c.offset
+	}
+	return now.Sub(c.newsAt) - c.offset
+}
+
+// Showing marks the story the reader shows at now, by the plan of the
+// most recent frame.
+func (c *ReaderClock) Showing(now time.Time) StoryMark {
+	readerCache.Lock()
+	plans, total, news := readerCache.plans, readerCache.total, readerCache.news
+	readerCache.Unlock()
+	if len(plans) == 0 || total <= 0 || news != c.news {
+		return StoryMark{}
+	}
+	return markOf(plans[locate(plans, total, c.elapsed(now)).plan].story)
+}
+
+// Land moves the clock to story m in the plan of the most recent frame
+// (render once at the new size first). Running, it starts the story
+// over; paused, it holds on its first page fully typed. A story no longer
+// in the news leaves the clock alone.
+func (c *ReaderClock) Land(m StoryMark, now time.Time) {
+	if !m.ok {
+		return
+	}
+	readerCache.Lock()
+	plans, total, news := readerCache.plans, readerCache.total, readerCache.news
+	readerCache.Unlock()
+	if len(plans) == 0 || total <= 0 || news != c.news {
+		return
+	}
+	for i, p := range plans {
+		if markOf(p.story) != m {
+			continue
+		}
+		el := c.elapsed(now)
+		cyc := el % total
+		if cyc < 0 {
+			cyc += total
+		}
+		target := el - cyc + start(plans, i)
+		if c.paused {
+			target += pageDur(p.pages[0], true) - readerHold
+		}
+		c.offset += el - target
+		return
+	}
 }

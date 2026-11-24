@@ -87,6 +87,7 @@ func TestRenderAnySize(t *testing.T) {
 		{Page: News, Snap: demo, Feeds: feeds.Demo(now), Now: now},
 		{Page: News, Snap: demo, Feeds: feeds.View{NewsOn: true, WeatherErr: "timeout", WeatherOn: true}},
 		{Page: News, Snap: empty},
+		{Page: News, Snap: demo, Feeds: feeds.Demo(now), Now: now, ReaderFull: true}, {Page: News, Snap: empty, ReaderFull: true},
 		{Page: Net, Snap: demo}, {Page: Net, Snap: empty},
 		{Page: Links, Snap: demo}, {Page: Links, Snap: empty},
 		{Page: Links, Snap: &sys.Snapshot{Time: demo.Time, Links: &sys.Links{}}}, // not root: no LLDP

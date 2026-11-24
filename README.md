@@ -32,7 +32,7 @@ orb -gfx -once 3440x1440 > frame.png
 | `a` | Airwaves | Wi-Fi networks heard nearby, channel crowding, protection, the host's radios |
 | `h` | Henry Mode! | Henry, the dog from the header, out in a meadow under the sky |
 
-`t` next theme, `space` pause/resume the news reader, `↑`/`←` previous story, `↓`/`→` next story (in Henry Mode `←`/`→` step the time of day), `i` attract mode, `q` quit.
+`t` next theme, `space` pause/resume the news reader, `↑`/`←` previous story, `↓`/`→` next story (in Henry Mode `←`/`→` step the time of day), `0` on the news page gives the reader the whole screen (again to return), `i` attract mode, `q` quit.
 
 Attract mode is off until `i` (or `-attract`): armed, orb waits for 30
 seconds without a key, then cycles the pages like an arcade attract screen,
@@ -156,6 +156,11 @@ listens on every channel and sends no probe requests. A radio that is also
 your link briefly leaves its channel while it listens, so this is off by
 default. orb never brings a radio up. Bluetooth is not listened to yet
 ([ADR-0006](docs/adr/0006-listening-to-the-airwaves.md)).
+
+On the news page `0` gives the story reader the whole screen: the same
+story, typing and pages, in a box that fills it (more lines per page, so
+fewer pages). `0` again returns to the page, still on that story; paused
+stays paused. Any page key leaves it.
 
 **Henry Mode!** (`h`, graphics mode): Henry, the terrier from the header,
 out in a meadow. Above it is orb's own sky, with the sun or moon, stars and

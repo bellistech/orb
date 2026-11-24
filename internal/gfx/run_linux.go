@@ -103,12 +103,16 @@ func Run(o Options) error {
 	}()
 
 	page := o.Page
+	readerFull := false // the news reader on the whole screen (key 0)
 	want := o.OnPage
 	if want == nil {
 		want = func(ui.Page) {}
 	}
 	setPage := func(p ui.Page) {
 		page = p
+		if p != ui.News {
+			readerFull = false
+		}
 		want(p)
 	}
 	setPage(page)
@@ -168,11 +172,11 @@ func Run(o Options) error {
 		// The news page types text continuously, so it lays out every
 		// frame; tile diffing keeps that to the characters that appeared.
 		as := attract.State()
-		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != th || c.page != page || c.feeds != fv.Version || c.attract != as || c.henry != henryTime {
+		if c == nil || k < 1 || page == ui.News || c.sec != now.Unix() || c.theme != th || c.page != page || c.feeds != fv.Version || c.attract != as || c.henry != henryTime || c.full != readerFull {
 			snap := sys.Lerp(prev, cur, 1-(1-k)*(1-k)) // ease out
-			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now, Attract: as, HenryTime: henryTime}
+			v := ui.View{Page: page, Snap: snap, Feeds: fv, Now: now, Attract: as, HenryTime: henryTime, ReaderFull: readerFull}
 			reader.Apply(&v)
-			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), th, page, fv.Version, as, henryTime}
+			c = &canvasCache{ui.Render(cols, rows, v, th, true), now.Unix(), th, page, fv.Version, as, henryTime, readerFull}
 		}
 		a := Anim{Sky: NewSky(now, fv)}
 		if page == ui.Henry {
@@ -292,6 +296,19 @@ func Run(o Options) error {
 			case k.Code == KeyDown || k.Code == KeyRight:
 				reader.Skip(1, time.Now())
 				draw()
+			case k.Rune == '0' && page == ui.News:
+				// The reader changes size, so its pages change: lay the
+				// new size out once off screen, then land on the story
+				// that was showing.
+				now := time.Now()
+				mark := reader.Showing(now)
+				readerFull = !readerFull
+				v := ui.View{Page: page, Snap: cur, Feeds: feedView(), Now: now, ReaderFull: readerFull}
+				reader.Apply(&v)
+				ui.Render(cols, rows, v, sel.Theme(now, o.FPS > 0), true)
+				reader.Land(mark, now)
+				c = nil
+				draw()
 			case k.Rune == 'q' || k.Rune == 'Q' || k.Code == KeyInterrupt:
 				return nil
 			case k.Rune == 't' || k.Rune == 'T':
@@ -355,4 +372,5 @@ type canvasCache struct {
 	feeds   uint64
 	attract ui.AttractState
 	henry   ui.HenryTime
+	full    bool
 }
