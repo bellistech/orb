@@ -73,6 +73,7 @@ type Renderer struct {
 	prevOver    []rect // overlay rects drawn last frame
 	orbPal      *orbPalette
 	dogPal      *dogPalCache
+	cloudShapes map[[2]uint32]*cloudShape // Henry Mode's clouds, by seed and scale
 
 	// Per tile: the window whose top border it is on (-1 none), whether
 	// it must be redrawn (under an overlay, sky repainted), whether it

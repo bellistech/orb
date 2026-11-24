@@ -2,6 +2,7 @@ package gfx
 
 import (
 	"math"
+	"sync"
 	"time"
 
 	"orb/internal/canvas"
@@ -54,9 +55,9 @@ func meadowOf(pr rect) meadow {
 	m.treeX = pr.x0 + w*86/100
 	m.treeBase = pr.y0 + h*61/100
 	short := min(w, h*2) // a tall scene must not grow a tree wider than itself
-	m.trunkH = max(16, short*9/100)
-	m.trunkW = max(4, short*3/200)
-	m.canopy = max(14, short*5/100)
+	m.trunkH = max(16, short*10/100)
+	m.trunkW = max(4, short*2/100)
+	m.canopy = max(14, short*9/100) // big enough to hold the owl
 	m.s = max(2, min(4, h/130))
 	return m
 }
@@ -261,6 +262,7 @@ func (r *Renderer) meadowOverlays(sc canvas.Window, t *ui.Theme, a Anim) []overl
 	light, _ := meadowLight(a.Sky)
 	night := light < 0.45
 	var out []overlay
+	out = append(out, r.meadowClouds(m, a.T, light, a.Sky)...)
 	if night {
 		out = append(out, owl(m, a.T, light))
 	} else {
@@ -291,8 +293,14 @@ const (
 
 // henryLane is where Henry may run, left to right.
 func (m meadow) henryLane() (lo, hi int) {
-	return m.pr.x0 + m.w*4/100, m.treeX - m.canopy - dogW*m.s
+	lo, hi = m.pr.x0+m.w*4/100, m.treeX-m.canopy-m.henryW()
+	return lo, max(hi, lo+1)
 }
+
+// Henry is drawn from double-resolution art (henryArt), so he stands
+// twice the header dog's size at the scene's sprite scale.
+func (m meadow) henryW() int { return 2 * dogW * m.s }
+func (m meadow) henryH() int { return 2 * dogH * m.s }
 
 // henrySpot is where chase k starts (and chase k-1 ends).
 func (m meadow) henrySpot(k int) int {
@@ -305,9 +313,9 @@ func (m meadow) henrySpot(k int) int {
 func (m meadow) henryChase(k int) (a, b int, t0, run float64, sprint bool) {
 	a, b = m.henrySpot(k), m.henrySpot(k+1)
 	d := math.Abs(float64(b - a))
-	sp := henryTrot * float64(m.s)
-	if d > float64(80*m.s) {
-		sp, sprint = henrySpeed*float64(m.s), true
+	sp := 2 * henryTrot * float64(m.s)
+	if d > float64(160*m.s) {
+		sp, sprint = 2*henrySpeed*float64(m.s), true
 	}
 	return a, b, 1.5, d / sp, sprint
 }
@@ -321,7 +329,7 @@ type henryPose struct {
 
 func henryPoseAt(m meadow, T float64, night bool) henryPose {
 	if night {
-		x := max(m.henrySpot(0), m.treeX-m.canopy-dogW*m.s-20)
+		x := max(m.henrySpot(0), m.treeX-m.canopy-m.henryW()-20)
 		f := dogNap1
 		if int(T/1.6)%2 == 1 {
 			f = dogNap2
@@ -349,7 +357,7 @@ func henryPoseAt(m meadow, T float64, night bool) henryPose {
 		}
 		return henryPose{f, lerpPx(a, b, (u-t0)/max(run, 1e-6)), 0, left}
 	case u < arr+0.6:
-		return henryPose{dogLeap, b, int(float64(9*m.s) * math.Sin(math.Pi*(u-arr)/0.6)), left}
+		return henryPose{dogLeap, b, int(float64(18*m.s) * math.Sin(math.Pi*(u-arr)/0.6)), left}
 	case u < arr+1.6:
 		return henryPose{dogNose, b, 0, left}
 	case u < arr+3.0:
@@ -361,9 +369,9 @@ func henryPoseAt(m meadow, T float64, night bool) henryPose {
 func (r *Renderer) henry(m meadow, t *ui.Theme, T float64, night bool) overlay {
 	p := henryPoseAt(m, T, night)
 	sc := m.s
-	w, h := dogW*sc, dogH*sc
+	w, h := m.henryW(), m.henryH()
 	top := m.ground - h - p.lift
-	bb := rect{p.x - 6, top - 22, p.x + w + 14, m.ground + 4}
+	bb := rect{p.x - 6, top - 40, p.x + w + 28, m.ground + 4}
 	if r.dogPal == nil || r.dogPal.theme != t || r.dogPal.accent != t.Host {
 		r.dogPal = &dogPalCache{t, t.Host, newDogPalette(t, t.Host)}
 	}
@@ -371,12 +379,13 @@ func (r *Renderer) henry(m meadow, t *ui.Theme, T float64, night bool) overlay {
 	return overlay{bb, func(f *Frame) {
 		put := putter(f, bb)
 		// A soft shadow, smaller when he is in the air.
-		sw := w - 10 - p.lift
+		sw := w - 20 - p.lift
 		for x := p.x + (w-sw)/2; x < p.x+(w+sw)/2; x++ {
 			put(x, m.ground, 0x000000, 0.3)
-			put(x, m.ground+1, 0x000000, 0.15)
+			put(x, m.ground+1, 0x000000, 0.2)
+			put(x, m.ground+2, 0x000000, 0.1)
 		}
-		drawArt(dogArt[p.frame][:], 0, 0, p.left, pal, func(x, y int, v uint32) {
+		drawArt(henryArt(p.frame), 0, 0, p.left, pal, func(x, y int, v uint32) {
 			for dy := range sc {
 				for dx := range sc {
 					put(p.x+x*sc+dx, top+y*sc+dy, v, 1)
@@ -386,13 +395,15 @@ func (r *Renderer) henry(m meadow, t *ui.Theme, T float64, night bool) overlay {
 		if night { // z's drifting up from a sleeping dog
 			for i := range 3 {
 				u := math.Mod(T/3+float64(i)/3, 1)
-				zx := p.x + w - 8 + int(u*12)
-				zy := top + 4 - int(u*20)
+				zx := p.x + w - 16 + int(u*24)
+				zy := top + 8 - int(u*36)
 				k := math.Sin(math.Pi * u)
 				for row, line := range []string{"####", "..#.", ".#..", "####"} {
 					for col := range line {
 						if line[col] == '#' {
-							put(zx+col, zy+row, 0xe8ecff, k)
+							for d := range 4 {
+								put(zx+col*2+d%2, zy+row*2+d/2, 0xe8ecff, k)
+							}
 						}
 					}
 				}
@@ -441,13 +452,13 @@ func teaser(m meadow, T float64, light float64) overlay {
 	_, b, t0, run, _ := m.henryChase(k)
 	_, b2, _, _, _ := m.henryChase(k + 1)
 	arr := t0 + run
-	head := float64(m.ground - dogH*m.s - 8)
+	head := float64(m.ground - m.henryH() - 8)
 	hover := func(x int, u float64) (float64, float64) {
-		return float64(x+dogW*m.s/2) + float64(8*m.s)*math.Sin(u*1.9), head - float64(17*m.s) + float64(5*m.s)*math.Sin(u*2.6)
+		return float64(x+m.henryW()/2) + float64(12*m.s)*math.Sin(u*1.9), head - float64(20*m.s) + float64(6*m.s)*math.Sin(u*2.6)
 	}
 	var x, y float64
 	hx, hy := hover(b, u)
-	fx, fy := float64(b+dogW*m.s/2+20*m.s), float64(m.horizon)-float64(m.h)*0.05
+	fx, fy := float64(b+m.henryW()/2+30*m.s), float64(m.horizon)-float64(m.h)*0.05
 	nx, ny := hover(b2, 0)
 	switch {
 	case u < arr:
@@ -489,21 +500,22 @@ func turtle(m meadow, T float64, night bool, light float64) overlay {
 	if night {
 		x, frame, left = lo+(hi-lo)*3/10, 2, false
 	}
-	w, h := 16*s, 6*s
+	w, h := 48*s, 18*s // turtleArt, three times over
 	feet := m.streamY(x+w/2) - m.streamHalf - 1
 	y := feet - h
 	if frame < 2 && int(T*1.3)%5 == 0 {
-		y-- // a head bob now and then
+		y -= s // a head bob now and then
 	}
 	bb := rect{x - 2, y - 2, x + w + 2, feet + 3}
 	pal := map[byte]uint32{'o': tint(0x223a20, light, 0), 'S': tint(0x3e6b3a, light, 0), 's': tint(0x7da35a, light, 0),
-		'r': tint(0x6b4a2b, light, 0), 'k': tint(0x9bbf6a, light, 0), 'e': 0x111111}
+		'r': tint(0x6b4a2b, light, 0), 'k': tint(0x9bbf6a, light, 0), 'e': 0x111111,
+		'H': tint(0xa6d07a, light, 0), 'D': tint(0x2c4f2a, light, 0), 'R': tint(0x8a6440, light, 0), 'K': tint(0x7a9a52, light, 0)}
 	return overlay{bb, func(f *Frame) {
 		put := putter(f, bb)
 		for xx := x + 2; xx < x+w-2; xx++ {
 			put(xx, feet+1, 0x000000, 0.25)
 		}
-		drawSprite(turtleArt[frame], x, y, s, left, pal, put)
+		drawSprite(turtleBig(frame), x, y, s, left, pal, put)
 	}}
 }
 
@@ -552,7 +564,7 @@ var owlArt = []string{
 func owl(m meadow, T float64, light float64) overlay {
 	s := m.s
 	px, py := m.owlPerch()
-	w, h := 9*s, 11*s
+	w, h := 27*s, 33*s // owlArt, three times over
 	x, y := px-w/2, py-h+s
 	blink := math.Mod(T, 5.3) < 0.18
 	look := math.Mod(T/7, 1) < 0.5
@@ -560,8 +572,10 @@ func owl(m meadow, T float64, light float64) overlay {
 	if look {
 		L, R = 'k', 'e'
 	}
-	pal := map[byte]uint32{'o': 0x2a1d14, 'b': tint(0x7a5233, light*0.6+0.4, 0), 'l': tint(0xc9a27a, light*0.6+0.4, 0),
-		'f': tint(0xe3cfa8, light*0.6+0.4, 0), 'e': 0xffcf3a, 'k': 0x111111, 'n': 0xd18a2a, 't': 0xffb347}
+	lit := light*0.6 + 0.4
+	pal := map[byte]uint32{'o': 0x2a1d14, 'b': tint(0x7a5233, lit, 0), 'l': tint(0xc9a27a, lit, 0),
+		'f': tint(0xe3cfa8, lit, 0), 'e': 0xffcf3a, 'k': 0x111111, 'n': 0xd18a2a, 't': 0xffb347,
+		'B': tint(0x9a6c45, lit, 0), 'd': tint(0x5a3a22, lit, 0), 'm': tint(0xa88660, lit, 0), 'F': tint(0xf4e6c6, lit, 0)}
 	art := make([]string, len(owlArt))
 	for i, row := range owlArt {
 		b := []byte(row)
@@ -577,6 +591,7 @@ func owl(m meadow, T float64, light float64) overlay {
 		}
 		art[i] = string(b)
 	}
+	art = owlDetail(scale3x(art))
 	bb := rect{x, y, x + w, y + h}
 	return overlay{bb, func(f *Frame) { drawSprite(art, x, y, s, false, pal, putter(f, bb)) }}
 }
@@ -630,6 +645,156 @@ func glints(m meadow, T float64, night bool) []overlay {
 			put(x, y, c, k)
 			put(x+1, y, c, k)
 			put(x+2, y, c, k*0.5)
+		}})
+	}
+	return out
+}
+
+// The high-detail art, built once: Henry's frames doubled by Scale2x with
+// light and shade on his coat, the turtle tripled by Scale3x with a lit
+// shell.
+var (
+	bigOnce    sync.Once
+	henryBig   [dogFrames][]string
+	turtleBig3 [len(turtleArt)][]string
+)
+
+func buildBig() {
+	for f := range dogFrames {
+		a := scale2x(dogArt[f][:])
+		a = shade(a, "w", 'W', 'v', 19) // the white coat: lit back, shaded belly, a little fur
+		a = shade(a, "k", 'K', 'k', 0)  // a sheen on the black ears and patches
+		a = shade(a, "t", 'T', 't', 0)  // and on the tan points
+		henryBig[f] = a
+	}
+	for i := range turtleArt {
+		a := scale3x(turtleArt[i])
+		a = shade(a, "Ss", 'H', 'D', 11) // a lit shell with dark scute lines
+		a = shade(a, "r", 'R', 'r', 0)
+		a = shade(a, "k", 'K', 'k', 0)
+		turtleBig3[i] = a
+	}
+}
+
+func henryArt(f dogFrame) []string {
+	bigOnce.Do(buildBig)
+	return henryBig[f]
+}
+
+func turtleBig(i int) []string {
+	bigOnce.Do(buildBig)
+	return turtleBig3[i]
+}
+
+// owlDetail adds feathers to the tripled owl: lit crown and wings,
+// streaks on the chest, a pale rim to the face.
+func owlDetail(a []string) []string {
+	a = shade(a, "b", 'B', 'd', 7)
+	a = shade(a, "l", 'l', 'm', 5)
+	return shade(a, "f", 'F', 'f', 0)
+}
+
+// Fair-weather clouds drifting across Henry Mode's sky, each a new random
+// shape every time it comes round: a row of round puffs, biggest in the
+// middle, on a flat base, lit on top and grey underneath. Dim and blue at
+// night, warm at dawn and dusk. A shape is worked out once per lap and
+// cached; a frame only blends its pixels at the new place.
+
+// cloudPx is one pixel of a cloud shape: where, and which shade (0 body,
+// 1 lit top, 2 grey underside; +4 on the soft edge).
+type cloudPx struct {
+	dx, dy int16
+	kind   uint8
+}
+
+type cloudShape struct {
+	w, h int
+	px   []cloudPx
+}
+
+func newCloudShape(seed uint32, s int) *cloudShape {
+	cw := (36 + int(seed%40)) * s
+	ch := cw * 45 / 100
+	base := float64(ch) * 0.85
+	n := 3 + int(seed>>8%4)
+	type puff struct{ cx, cy, r float64 }
+	puffs := make([]puff, n)
+	for j := range n {
+		mid := 1 - math.Abs(float64(j)-float64(n-1)/2)/(float64(n)/2) // 1 in the middle
+		r := float64(ch) * (0.22 + 0.25*mid + 0.08*float64(hash(seed, uint32(j))%4)/3)
+		cx := float64(cw) * (0.18 + 0.64*float64(j)/float64(max(n-1, 1)))
+		puffs[j] = puff{cx, base - r*0.55, r}
+	}
+	sh := &cloudShape{w: cw, h: ch + 1}
+	for y := 0; y <= int(base); y++ {
+		for x := range cw {
+			best, top := 2.0, 0.0
+			for _, p := range puffs {
+				dx, dy := float64(x)-p.cx, float64(y)-p.cy
+				if d := math.Hypot(dx, dy) / p.r; d < best {
+					best, top = d, -dy/p.r
+				}
+			}
+			if best > 1 {
+				continue
+			}
+			var k uint8
+			switch {
+			case float64(y) > base-float64(ch)*0.18:
+				k = 2
+			case top > 0.45:
+				k = 1
+			}
+			if best > 0.9 {
+				k += 4
+			}
+			sh.px = append(sh.px, cloudPx{int16(x), int16(y), k})
+		}
+	}
+	return sh
+}
+
+// cloudShapeFor returns the cached shape, building it on first use. The
+// cache holds the clouds of the last few laps only.
+func (r *Renderer) cloudShapeFor(seed uint32, s int) *cloudShape {
+	key := [2]uint32{seed, uint32(s)}
+	if sh, ok := r.cloudShapes[key]; ok {
+		return sh
+	}
+	if r.cloudShapes == nil || len(r.cloudShapes) >= 16 {
+		r.cloudShapes = map[[2]uint32]*cloudShape{}
+	}
+	sh := newCloudShape(seed, s)
+	r.cloudShapes[key] = sh
+	return sh
+}
+
+func (r *Renderer) meadowClouds(m meadow, T float64, light float64, sky Sky) []overlay {
+	_, glow := meadowLight(sky)
+	lit := lerpRGB(0x5a6480, 0xffffff, light)
+	lit = lerpRGB(lit, 0xffc49a, glow*0.5)
+	cols := [3]uint32{lerpRGB(lit, 0x8a94ad, 0.15), lit, lerpRGB(lit, 0x7d88a6, 0.45)}
+	alpha := 0.6 + 0.35*light
+	var out []overlay
+	for i := range 5 {
+		fi := float64(i)
+		speed := float64(m.s) * (2.5 + 1.5*float64(hash(uint32(i), 3)%4))
+		span := float64(m.w) + float64(140*m.s)
+		pos := T*speed + fi*span/5
+		lap := uint32(pos / span)
+		sh := r.cloudShapeFor(hash(uint32(i)*977+13, lap), m.s)
+		x := m.pr.x0 - 70*m.s + int(math.Mod(pos, span))
+		y := m.pr.y0 + m.h*(3+int(hash(uint32(i), lap+7)%22))/100
+		bb := rect{x, y, x + sh.w, y + sh.h}
+		out = append(out, overlay{bb, func(f *Frame) {
+			put := putter(f, bb)
+			for _, p := range sh.px {
+				k := alpha
+				if p.kind >= 4 {
+					k *= 0.6 // a soft edge
+				}
+				put(x+int(p.dx), y+int(p.dy), cols[p.kind&3], k)
+			}
 		}})
 	}
 	return out

@@ -163,12 +163,15 @@ fewer pages). `0` again returns to the page, still on that story; paused
 stays paused. Any page key leaves it.
 
 **Henry Mode!** (`h`, graphics mode): Henry, the terrier from the header,
-out in a meadow. Above it is orb's own sky, with the sun or moon, stars and
-the weather from the feed. Below it are hills, a field of flowers, a stream
+out in a meadow, drawn at twice the header's size from double-resolution
+art with light and shade on his coat. Above it is orb's own sky, with the
+sun or moon, stars and the weather from the feed, and fair-weather clouds
+that drift across it, a new random shape each time one comes round. Below it are hills, a field of flowers, a stream
 and a tree. By day Henry chases butterflies: he trots or sprints to where
 one hovers, leaps at it as it dips to his nose, sniffs, play-bows and sits
 panting while it flutters off. Meanwhile a turtle walks the bank and birds
-cross the sky. At night he naps under the tree with z's drifting up,
+cross the sky. The turtle and the owl are drawn three times larger, since
+Henry is a small dog. At night he naps under the tree with z's drifting up,
 fireflies glow over the field, and an owl on the branch blinks and looks
 about. The meadow darkens with the light and dims under cloud. `←`/`→` step
 through clock, dawn, day, dusk and night; clock follows the real time of

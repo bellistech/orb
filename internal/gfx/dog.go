@@ -402,6 +402,11 @@ func newDogPalette(t *ui.Theme, accent canvas.Color) *dogPalette {
 	set('R', canvas.RGB(0xc8, 0x56, 0x0e))
 	set('b', canvas.RGB(0x2a, 0x6f, 0xdb))
 	set('y', canvas.RGB(0xff, 0xd2, 0xa8))
+	// Henry Mode's high-detail coat (henryArt): light, shade and sheen.
+	set('W', canvas.RGB(0xff, 0xff, 0xfb))
+	set('v', canvas.RGB(0xd6, 0xd1, 0xc6))
+	set('K', canvas.RGB(0x44, 0x40, 0x4c))
+	set('T', canvas.RGB(0xe3, 0xa8, 0x6a))
 	return p
 }
 
