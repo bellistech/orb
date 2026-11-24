@@ -18,6 +18,7 @@ type Options struct {
 	Interval  time.Duration
 	Theme     string
 	Scale     int
+	Rotate    Rotation
 	FPS       int
 	Page      ui.Page
 	Feeds     func() feeds.View

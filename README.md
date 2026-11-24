@@ -16,6 +16,7 @@ orb -interval 2s        # sample every 2s
 orb -demo               # synthetic data
 orb -attract            # cycle the pages after 30s without a key (or press i)
 orb -gfx -blank 5m      # monitor off after 5 minutes without keyboard or mouse input
+orb -gfx -rotate 270    # monitor mounted on its side (auto follows the console)
 orb -once 215x45        # print one frame and exit
 orb -gfx -once 3440x1440 > frame.png
 ```
@@ -61,7 +62,18 @@ orb -gfx -scale 3       # pixel size, 1..8 (3, the default = 143x60 tiles on 344
 orb -gfx -fps 0         # no animation, redraw once per sample
 orb -gfx -intro=false   # straight to the dashboard
 orb -gfx -blank 5m      # monitor off after 5 minutes idle, 10s..24h (default 0: never)
+orb -gfx -rotate 270    # turn the picture 0, 90, 180 or 270 degrees clockwise (default auto)
 ```
+
+For a monitor mounted on its side, `-rotate` turns the picture on the
+framebuffer. The default, `auto`, stands it the way the text console
+stands (`fbcon=rotate:N` on the kernel command line, or
+`/sys/class/graphics/fbcon/rotate_all`), so a console already turned for
+the monitor needs nothing more. A monitor turned 90° clockwise wants 270
+(`fbcon=rotate:3`). Rotated, the layout gets the portrait size: 1920x1080
+mounted upright is 1080x1920, one column of panels; `-scale 2` keeps the
+big clock and longer graphs. Preview with `-gfx -once 1080x1920`, which
+writes the picture unrotated.
 
 With `-blank`, the monitor powers down (DPMS) once that long passes
 without a key press or mouse input, and the next key press, mouse move or
@@ -144,6 +156,7 @@ fps = 15                    # graphics mode, 0 = no animation
 intro = true                # graphics mode boot intro
 attract = false             # true: start with attract mode armed
 blank = 0                   # graphics mode: monitor off after this long idle, e.g. 5m; 0 never
+rotate = auto               # graphics mode: auto (follow the console), 0, 90, 180 or 270
 news_url = https://example.com/news.json
 weather_url = https://example.com/weather.json
 ```

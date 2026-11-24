@@ -29,6 +29,7 @@ page = news
 intro = false
 attract = true
 blank = 5m
+rotate = 270
 news_url = https://example.com/n.json
 weather_url = https://example.com/w.json   # trailing comment
 `, 0o600)
@@ -37,7 +38,7 @@ weather_url = https://example.com/w.json   # trailing comment
 		t.Fatalf("err=%v warn=%q", err, warn)
 	}
 	want := Config{Theme: "chrono", Scale: 5, FPS: 30, HasFPS: true, Interval: 2 * time.Second, Page: "news",
-		NoIntro: true, Attract: true, Blank: 5 * time.Minute, NewsURL: "https://example.com/n.json", WeatherURL: "https://example.com/w.json"}
+		NoIntro: true, Attract: true, Blank: 5 * time.Minute, Rotate: "270", NewsURL: "https://example.com/n.json", WeatherURL: "https://example.com/w.json"}
 	if c != want {
 		t.Fatalf("got %+v\nwant %+v", c, want)
 	}
@@ -62,6 +63,8 @@ func TestLoadRejects(t *testing.T) {
 		"bad blank":     "blank = later",
 		"tiny blank":    "blank = 1s",
 		"huge blank":    "blank = 48h",
+		"bad rotate":    "rotate = 45",
+		"fbcon rotate":  "rotate = 3",
 		"bad intro":     "intro = yes",
 		"bad attract":   "attract = 1",
 		"http news":     "news_url = http://example.com/n.json",

@@ -64,6 +64,7 @@ func main() {
 	device := flag.String("fb", "/dev/fb0", "graphics mode framebuffer device")
 	intro := flag.Bool("intro", true, "graphics mode: play the boot intro on start (any key skips)")
 	attract := flag.Bool("attract", false, "start with attract mode armed: cycle the pages after 30s without a key")
+	rotate := flag.String("rotate", "auto", "graphics mode: turn the picture 0, 90, 180 or 270 degrees clockwise for a monitor on its side; auto follows the console's fbcon rotation")
 	blank := flag.Duration("blank", 0, "graphics mode: turn the monitor off after this long without keyboard or mouse input, e.g. 5m (0 never)")
 	newsURL := flag.String("news-url", "", "news JSON URL (better kept in the config file)")
 	weatherURL := flag.String("weather-url", "", "weather JSON URL")
@@ -135,6 +136,9 @@ func main() {
 	if !set["blank"] && cfg.Blank != 0 {
 		*blank = cfg.Blank
 	}
+	if !set["rotate"] && cfg.Rotate != "" {
+		*rotate = cfg.Rotate
+	}
 	if !set["news-url"] {
 		*newsURL = cfg.NewsURL
 	}
@@ -166,6 +170,13 @@ func main() {
 	}
 	if !gfx.CheckBlank(*blank) {
 		fail("-blank must be 0 (never) or %v..%v", gfx.BlankMin, gfx.BlankMax)
+	}
+	rot, autoRot, err := gfx.ParseRotation(*rotate)
+	if err != nil {
+		fail("-%v", err)
+	}
+	if autoRot {
+		rot = gfx.ConsoleRotation()
 	}
 	for _, u := range []string{*newsURL, *weatherURL} {
 		if u != "" {
@@ -263,7 +274,7 @@ func main() {
 
 	if *gfxMode {
 		err := gfx.Run(gfx.Options{Device: *device, Source: src, Interval: *interval, Theme: sel.Name(),
-			Scale: *scale, FPS: *fps, Page: startPage, Feeds: feedView, OnPage: onPage,
+			Scale: *scale, Rotate: rot, FPS: *fps, Page: startPage, Feeds: feedView, OnPage: onPage,
 			Intro: *intro, Version: version, Attract: *attract, Blank: *blank, Activity: activity,
 			AfterOpen: func(tookVT bool) error {
 				if err := drop(tookVT); err != nil {

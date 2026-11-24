@@ -21,9 +21,10 @@ type Options struct {
 	Device   string               // framebuffer, e.g. /dev/fb0
 	Source   func() *sys.Snapshot // called once per Interval
 	Interval time.Duration
-	Theme    string // a name from ui.ThemeNames()
-	Scale    int    // pixels per logical pixel
-	FPS      int    // animation frames per second; 0 = redraw on samples only
+	Theme    string   // a name from ui.ThemeNames()
+	Scale    int      // pixels per logical pixel
+	Rotate   Rotation // turn the picture on the framebuffer (a monitor mounted on its side)
+	FPS      int      // animation frames per second; 0 = redraw on samples only
 	Page     ui.Page
 	Feeds    func() feeds.View // may be nil
 	OnPage   func(ui.Page)     // told every page shown (socket/link demand); may be nil
@@ -67,6 +68,7 @@ func Run(o Options) error {
 		return err
 	}
 	defer fb.Close()
+	fb.Rotate(o.Rotate)
 	cols, rows, padX, padY, err := Grid(fb.W, fb.H, o.Scale)
 	if err != nil {
 		return err
