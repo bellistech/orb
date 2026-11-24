@@ -30,13 +30,14 @@ orb -gfx -once 3440x1440 > frame.png
 | `n` | Network | listening sockets, active connections, socket states, interfaces |
 | `l` | Links | interfaces as ports, bridges, LLDP neighbors, ARP/NDP, routes |
 | `a` | Airwaves | Wi-Fi networks heard nearby, channel crowding, protection, the host's radios |
+| `h` | Henry Mode! | Henry, the dog from the header, out in a meadow under the sky |
 
-`t` next theme, `space` pause/resume the news reader, `↑`/`←` previous story, `↓`/`→` next story, `i` attract mode, `q` quit.
+`t` next theme, `space` pause/resume the news reader, `↑`/`←` previous story, `↓`/`→` next story (in Henry Mode `←`/`→` step the time of day), `i` attract mode, `q` quit.
 
 Attract mode is off until `i` (or `-attract`): armed, orb waits for 30
 seconds without a key, then cycles the pages like an arcade attract screen,
 20 s on the dashboard, 45 s on news (a whole story), 15 s on network,
-links and airwaves. Any key stops the cycle and does its usual job; the wait starts
+links and airwaves, 30 s in Henry Mode. Any key stops the cycle and does its usual job; the wait starts
 over. `i AUTO` in the header shows it armed, lit while it cycles; `i`
 again disarms it.
 
@@ -156,6 +157,19 @@ your link briefly leaves its channel while it listens, so this is off by
 default. orb never brings a radio up. Bluetooth is not listened to yet
 ([ADR-0006](docs/adr/0006-listening-to-the-airwaves.md)).
 
+**Henry Mode!** (`h`, graphics mode): Henry, the terrier from the header,
+out in a meadow. Above it is orb's own sky, with the sun or moon, stars and
+the weather from the feed. Below it are hills, a field of flowers, a stream
+and a tree. By day Henry chases butterflies: he trots or sprints to where
+one hovers, leaps at it as it dips to his nose, sniffs, play-bows and sits
+panting while it flutters off. Meanwhile a turtle walks the bank and birds
+cross the sky. At night he naps under the tree with z's drifting up,
+fireflies glow over the field, and an owl on the branch blinks and looks
+about. The meadow darkens with the light and dims under cloud. `←`/`→` step
+through clock, dawn, day, dusk and night; clock follows the real time of
+day. While Henry is in the meadow the header leaves his pen empty. A
+terminal shows a note instead.
+
 ## Configuration
 
 `~/.config/orb/config` (or `-config`), `key = value`, `#` comments.
@@ -164,7 +178,7 @@ URLs may be private.
 
 ```
 theme = gizzard             # phosphor, gizzard, lantern, chrono, arcane, crimson, sylvan, nonagon (cycle)
-page = dash                 # dash, news, net, links or air
+page = dash                 # dash, news, net, links, air or henry
 interval = 1s
 scale = 3                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation

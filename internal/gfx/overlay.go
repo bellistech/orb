@@ -37,6 +37,9 @@ func lerpRGB(a, b uint32, t float64) uint32 {
 // ball, and edge sparkles.
 func (r *Renderer) overlays(c *canvas.Canvas, t *ui.Theme, a Anim) []overlay {
 	var out []overlay
+	for _, sc := range c.Scenes {
+		out = append(out, r.meadowOverlays(sc, t, a)...)
+	}
 	for _, o := range c.Orbs {
 		out = append(out, r.orb(o, t, a))
 	}

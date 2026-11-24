@@ -64,7 +64,7 @@ func main() {
 	themeNames := ui.ThemeNames()
 	cfgPath := flag.String("config", config.DefaultPath(), "config file")
 	theme := flag.String("theme", ui.DefaultTheme, "color theme: "+strings.Join(themeNames, ", ")+" ("+ui.Cycle+" loops through the rest)")
-	page := flag.String("page", "dash", "starting page: dash, news, net, links or air")
+	page := flag.String("page", "dash", "starting page: dash, news, net, links, air or henry")
 	interval := flag.Duration("interval", time.Second, "sample interval")
 	once := flag.String("once", "", "print one frame of WxH cells (pixels with -gfx, as PNG) and exit")
 	gfxMode := flag.Bool("gfx", false, "draw pixels on the local console framebuffer instead of a terminal")
@@ -82,7 +82,7 @@ func main() {
 	reset := flag.String("reset-console", "", "force a VT back to text mode (e.g. /dev/tty1, or \"-\" for this one) and exit")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, l links (L2/L3), a airwaves,\n      space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, i attract mode, q quit.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, l links (L2/L3), a airwaves, h Henry Mode,\n      space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, i attract mode, q quit.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -174,8 +174,10 @@ func main() {
 		startPage = ui.Links
 	case "air":
 		startPage = ui.Air
+	case "henry":
+		startPage = ui.Henry
 	default:
-		fail("-page must be dash, news, net, links or air")
+		fail("-page must be dash, news, net, links, air or henry")
 	}
 	if *interval < 100*time.Millisecond {
 		fail("interval must be at least 100ms")

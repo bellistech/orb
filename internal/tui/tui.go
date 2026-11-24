@@ -43,6 +43,8 @@ type Model struct {
 	onPage   func(ui.Page)
 	snap     *sys.Snapshot
 	w, h     int
+
+	henryTime ui.HenryTime
 }
 
 // New returns a model sampling source every interval, starting on theme and
@@ -133,9 +135,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case "up", "left":
+		case "left", "right":
+			if m.page == ui.Henry {
+				d := 1
+				if msg.String() == "left" {
+					d = -1
+				}
+				m.henryTime = m.henryTime.Step(d)
+			} else if msg.String() == "left" {
+				m.reader.Skip(-1, time.Now())
+			} else {
+				m.reader.Skip(1, time.Now())
+			}
+		case "up":
 			m.reader.Skip(-1, time.Now())
-		case "down", "right":
+		case "down":
 			m.reader.Skip(1, time.Now())
 		case "t":
 			m.theme = m.theme.Next(time.Now())
@@ -149,6 +163,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.setPage(ui.Links)
 		case "a":
 			return m, m.setPage(ui.Air)
+		case "h":
+			return m, m.setPage(ui.Henry)
 		case "space", " ":
 			m.reader.Toggle(time.Now())
 		case "i":
@@ -163,7 +179,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the current snapshot full-screen.
 func (m Model) View() tea.View {
 	t := m.theme.Theme(time.Now(), true)
-	view := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: time.Now(), Attract: m.attract.State()}
+	view := ui.View{Page: m.page, Snap: m.snap, Feeds: m.feeds(), Now: time.Now(), Attract: m.attract.State(), HenryTime: m.henryTime}
 	m.reader.Apply(&view)
 	v := tea.NewView(ui.Render(m.w, m.h, view, t, false).String())
 	v.AltScreen = true
