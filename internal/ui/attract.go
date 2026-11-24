@@ -73,7 +73,7 @@ func (a *Attract) Step(now time.Time, p Page) (Page, bool) {
 		return p, false
 	}
 	a.shown = now
-	return (p + 1) % (Links + 1), true
+	return (p + 1) % (Air + 1), true
 }
 
 // State reports the attract state for the header.

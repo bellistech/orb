@@ -9,7 +9,7 @@ View-only host health dashboard for the terminal and the bare Linux console. Bui
 ```bash
 orb                     # live dashboard in the terminal
 orb -gfx                # pixel graphics on the local console (no desktop)
-orb -page news          # start on news & weather (or -page net, -page links)
+orb -page news          # start on news & weather (or -page net, links, air)
 orb -theme arcane       # phosphor, gizzard (default), lantern, chrono, arcane, crimson, sylvan
 orb -theme nonagon      # all of them in an endless loop, cross-fading every minute
 orb -interval 2s        # sample every 2s
@@ -29,13 +29,14 @@ orb -gfx -once 3440x1440 > frame.png
 | `w` | News & weather | headline windows, a story reader, current conditions, hourly curve, five-day ranges |
 | `n` | Network | listening sockets, active connections, socket states, interfaces |
 | `l` | Links | interfaces as ports, bridges, LLDP neighbors, ARP/NDP, routes |
+| `a` | Airwaves | Wi-Fi networks heard nearby, channel crowding, protection, the host's radios |
 
 `t` next theme, `space` pause/resume the news reader, `↑`/`←` previous story, `↓`/`→` next story, `i` attract mode, `q` quit.
 
 Attract mode is off until `i` (or `-attract`): armed, orb waits for 30
 seconds without a key, then cycles the pages like an arcade attract screen,
-20 s on the dashboard, 45 s on news (a whole story), 15 s on network and
-links. Any key stops the cycle and does its usual job; the wait starts
+20 s on the dashboard, 45 s on news (a whole story), 15 s on network,
+links and airwaves. Any key stops the cycle and does its usual job; the wait starts
 over. `i AUTO` in the header shows it armed, lit while it cycles; `i`
 again disarms it.
 
@@ -141,6 +142,20 @@ LLDP neighbors, the ARP/NDP table and the main routing table. Read from
 from orb's own listener, so only when started as root
 ([ADR-0003](docs/adr/0003-lldp-listener.md)).
 
+**Airwaves** (`a`): what the host's Wi-Fi radios hear, without ever
+joining a network or sending a frame. Networks with signal, name, channel,
+band, protection, BSSID and when last heard (kept 10 minutes after the
+last beacon); one column per channel per band, as tall as the networks on
+it and colored by the strongest; counts by protection (open and WEP lit
+hot) and band; each local radio with its state. By default orb only reads
+the kernel's list of networks heard, which costs nothing and needs no
+privilege. With `radio_scan = 60s` and orb started as root, a helper asks
+each Wi-Fi radio that is up for a passive scan that often: the radio
+listens on every channel and sends no probe requests. A radio that is also
+your link briefly leaves its channel while it listens, so this is off by
+default. orb never brings a radio up. Bluetooth is not listened to yet
+([ADR-0006](docs/adr/0006-listening-to-the-airwaves.md)).
+
 ## Configuration
 
 `~/.config/orb/config` (or `-config`), `key = value`, `#` comments.
@@ -149,13 +164,14 @@ URLs may be private.
 
 ```
 theme = gizzard             # phosphor, gizzard, lantern, chrono, arcane, crimson, sylvan, nonagon (cycle)
-page = dash                 # dash, news, net or links
+page = dash                 # dash, news, net, links or air
 interval = 1s
 scale = 3                   # graphics mode
 fps = 15                    # graphics mode, 0 = no animation
 intro = true                # graphics mode boot intro
 attract = false             # true: start with attract mode armed
 blank = 0                   # graphics mode: monitor off after this long idle, e.g. 5m; 0 never
+radio_scan = 0              # airwaves: passive Wi-Fi scan this often as root, 30s..1h; 0 off
 rotate = auto               # graphics mode: auto (follow the console), 0, 90, 180 or 270
 news_url = https://example.com/news.json
 weather_url = https://example.com/weather.json
@@ -170,7 +186,9 @@ on screen in a few words and never include the URL.
 Run as root to see every process on the network page and to hear LLDP. orb
 does not stay root: a small helper keeps only what reading other processes'
 sockets needs (as nobody, with no network), the LLDP helper drops to nobody
-with no capabilities once its socket is open, and the main process drops to
+with no capabilities once its socket is open, the radio scan helper (only
+with `radio_scan`) keeps only `CAP_NET_ADMIN` and reads nothing from the
+air, and the main process drops to
 you with no capabilities before it fetches anything. See
 [ADR-0002](docs/adr/0002-privilege-separation.md). Under sudo, orb reads the
 invoking user's `~/.config/orb/config`, only if it is a regular file

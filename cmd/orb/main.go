@@ -43,6 +43,15 @@ func main() {
 		}
 		return
 	}
+	// The passive Wi-Fi scan helper (ADR-0006), likewise re-executed by a
+	// root orb, with its interval as the only argument.
+	if len(os.Args) == 3 && os.Args[1] == priv.RadioHelperFlag {
+		if err := priv.RunRadioHelper(os.Args[2:], os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "orb radio helper:", err)
+			os.Exit(3)
+		}
+		return
+	}
 	// The LLDP listener (ADR-0003), likewise re-executed by a root orb.
 	if len(os.Args) == 2 && os.Args[1] == priv.LLDPHelperFlag {
 		if err := priv.RunLLDPHelper(os.Stdin, os.Stdout); err != nil {
@@ -55,7 +64,7 @@ func main() {
 	themeNames := ui.ThemeNames()
 	cfgPath := flag.String("config", config.DefaultPath(), "config file")
 	theme := flag.String("theme", ui.DefaultTheme, "color theme: "+strings.Join(themeNames, ", ")+" ("+ui.Cycle+" loops through the rest)")
-	page := flag.String("page", "dash", "starting page: dash, news, net or links")
+	page := flag.String("page", "dash", "starting page: dash, news, net, links or air")
 	interval := flag.Duration("interval", time.Second, "sample interval")
 	once := flag.String("once", "", "print one frame of WxH cells (pixels with -gfx, as PNG) and exit")
 	gfxMode := flag.Bool("gfx", false, "draw pixels on the local console framebuffer instead of a terminal")
@@ -65,6 +74,7 @@ func main() {
 	intro := flag.Bool("intro", true, "graphics mode: play the boot intro on start (any key skips)")
 	attract := flag.Bool("attract", false, "start with attract mode armed: cycle the pages after 30s without a key")
 	rotate := flag.String("rotate", "auto", "graphics mode: turn the picture 0, 90, 180 or 270 degrees clockwise for a monitor on its side; auto follows the console's fbcon rotation")
+	radioScan := flag.Duration("radio-scan", 0, "airwaves page: ask Wi-Fi radios for a passive scan this often as root, 30s..1h (0: only show what was already heard)")
 	blank := flag.Duration("blank", 0, "graphics mode: turn the monitor off after this long without keyboard or mouse input, e.g. 5m (0 never)")
 	newsURL := flag.String("news-url", "", "news JSON URL (better kept in the config file)")
 	weatherURL := flag.String("weather-url", "", "weather JSON URL")
@@ -72,7 +82,7 @@ func main() {
 	reset := flag.String("reset-console", "", "force a VT back to text mode (e.g. /dev/tty1, or \"-\" for this one) and exit")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, l links (L2/L3), space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, i attract mode, q quit.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "usage: orb [flags]\n\nKeys: d dashboard, w news & weather, n network, l links (L2/L3), a airwaves,\n      space pause/resume the reader,\n      up/left previous story, down/right next story, t next theme, i attract mode, q quit.\n\nFlags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -133,6 +143,9 @@ func main() {
 	if !set["attract"] && cfg.Attract {
 		*attract = true
 	}
+	if !set["radio-scan"] && cfg.RadioScan != 0 {
+		*radioScan = cfg.RadioScan
+	}
 	if !set["blank"] && cfg.Blank != 0 {
 		*blank = cfg.Blank
 	}
@@ -159,8 +172,10 @@ func main() {
 		startPage = ui.Net
 	case "links":
 		startPage = ui.Links
+	case "air":
+		startPage = ui.Air
 	default:
-		fail("-page must be dash, news, net or links")
+		fail("-page must be dash, news, net, links or air")
 	}
 	if *interval < 100*time.Millisecond {
 		fail("interval must be at least 100ms")
@@ -170,6 +185,12 @@ func main() {
 	}
 	if !gfx.CheckBlank(*blank) {
 		fail("-blank must be 0 (never) or %v..%v", gfx.BlankMin, gfx.BlankMax)
+	}
+	if !priv.CheckRadioScan(*radioScan) {
+		fail("-radio-scan must be 0 (off) or %v..%v", priv.RadioScanMin, priv.RadioScanMax)
+	}
+	if *radioScan > 0 && os.Geteuid() != 0 && !*demo {
+		fmt.Fprintln(os.Stderr, "orb: warning: -radio-scan needs root; the airwaves page will only show what was already heard")
 	}
 	rot, autoRot, err := gfx.ParseRotation(*rotate)
 	if err != nil {
@@ -192,6 +213,7 @@ func main() {
 	onPage := func(p ui.Page) {
 		sampler.WantSockets.Store(p == ui.Net)
 		sampler.WantLinks.Store(p == ui.Links)
+		sampler.WantRadio.Store(p == ui.Air)
 	}
 	feedView := func() feeds.View { return feeds.View{} }
 	startFeeds := func() {}
@@ -224,6 +246,14 @@ func main() {
 		} else {
 			sampler.LLDP = t.Neighbors
 			defer stop()
+		}
+		if *radioScan > 0 {
+			if scans, stop, err := priv.StartRadioHelper(*radioScan); err != nil {
+				fmt.Fprintf(os.Stderr, "orb: warning: %v; the airwaves page will only show what was already heard\n", err)
+			} else {
+				sampler.RadioScan = scans.State
+				defer stop()
+			}
 		}
 		target := priv.TargetFromEnv(os.Getenv)
 		drop = func(tookVT bool) error {

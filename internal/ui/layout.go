@@ -11,12 +11,13 @@ import (
 // Page is which screen is showing.
 type Page int
 
-// Pages, in key order: d, w, n and l.
+// Pages, in key order: d, w, n, l and a.
 const (
 	Dash Page = iota
 	News
 	Net
 	Links
+	Air
 )
 
 // View is everything a frame shows.
@@ -68,6 +69,8 @@ func grid(p Page, w int) []row {
 		return netGrid(w)
 	case Links:
 		return linksGrid(w)
+	case Air:
+		return airGrid(w)
 	}
 	var (
 		drawCPU, drawNet, drawDisk = dash(drawCPU), dash(drawNet), dash(drawDisk)

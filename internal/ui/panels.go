@@ -521,7 +521,7 @@ func drawTabs(r canvas.Region, p Page, a AttractState, t *Theme, x0 int) {
 	for i, tab := range []struct {
 		key, name string
 		page      Page
-	}{{"d", "DASH", Dash}, {"w", "NEWS", News}, {"n", "NET", Net}, {"l", "LINKS", Links}} {
+	}{{"d", "DASH", Dash}, {"w", "NEWS", News}, {"n", "NET", Net}, {"l", "LINKS", Links}, {"a", "AIR", Air}} {
 		if i > 0 {
 			x = r.Text(x, 0, "  ", edge)
 		}

@@ -90,6 +90,10 @@ func TestRenderAnySize(t *testing.T) {
 		{Page: Net, Snap: demo}, {Page: Net, Snap: empty},
 		{Page: Links, Snap: demo}, {Page: Links, Snap: empty},
 		{Page: Links, Snap: &sys.Snapshot{Time: demo.Time, Links: &sys.Links{}}}, // not root: no LLDP
+		{Page: Air, Snap: demo}, {Page: Air, Snap: empty},
+		{Page: Air, Snap: &sys.Snapshot{Time: demo.Time, Radio: &sys.Radio{}}},                          // no radio
+		{Page: Air, Snap: &sys.Snapshot{Time: demo.Time, Radio: &sys.Radio{Ifaces: demo.Radio.Ifaces}}}, // nothing heard
+		{Page: Air, Snap: &sys.Snapshot{Time: demo.Time, Radio: &sys.Radio{Err: "no Wi-Fi driver"}}},
 	}
 	for _, th := range Themes {
 		for _, v := range views {
